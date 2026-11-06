@@ -1,3 +1,4 @@
+/** @OnlyCurrentDoc */
 /**
  * TALKS MARKETING · sincronização da equipe
  * ---------------------------------------------------------------
