@@ -86,7 +86,7 @@ function estado_() {
       passos: passos,
       nota: String(o.nota || ''),
       por: String(o.por || ''),
-      atualizado: o.atualizado instanceof Date ? o.atualizado.toISOString() : String(o.atualizado || ''),
+      atualizado: ehData_(o.atualizado) ? o.atualizado.toISOString() : String(o.atualizado || ''),
     };
   }
   var hist = aba_(ABA_HIST, COLS_HIST);
@@ -98,7 +98,7 @@ function estado_() {
     for (var k = linhas.length - 1; k >= 0; k--) {
       var h = linhas[k];
       historico.push({
-        quando: h[0] instanceof Date ? h[0].toISOString() : String(h[0] || ''),
+        quando: ehData_(h[0]) ? h[0].toISOString() : String(h[0] || ''),
         quem: String(h[1] || ''), id: String(h[2] || ''), entrega: String(h[3] || ''), texto: String(h[4] || ''),
       });
     }
@@ -120,4 +120,9 @@ function aba_(nome, cabecalho) {
 
 function saida_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// No Apps Script (V8), "instanceof Date" falha com valores lidos da planilha.
+function ehData_(v) {
+  return Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime());
 }

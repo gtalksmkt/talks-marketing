@@ -46,6 +46,21 @@ const fmtQuando = iso => {
   return d.getDate() + ' ' + MESES_C[d.getMonth()] + ', ' + hh;
 };
 const cap = s => String(s).charAt(0).toUpperCase() + String(s).slice(1);
+// A planilha pode devolver datas como "Thu Nov 05 2026 23:16:13 GMT-0300 (...)": converte para ISO
+// sem depender do navegador (o Safari não lê esse formato com segurança).
+const MES_EN = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+function paraISO(v) {
+  if (!v) return '';
+  const s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return s;
+  const m = s.match(/^\w{3} (\w{3}) (\d{1,2}) (\d{4}) (\d{2}):(\d{2}):(\d{2}) GMT([+-])(\d{2})(\d{2})/);
+  if (m && m[1] in MES_EN) {
+    const off = (m[7] === '-' ? -1 : 1) * (Number(m[8]) * 60 + Number(m[9]));
+    return new Date(Date.UTC(+m[3], MES_EN[m[1]], +m[2], +m[4], +m[5], +m[6]) - off * 60000).toISOString();
+  }
+  const d = new Date(s);
+  return isNaN(d) ? '' : d.toISOString();
+}
 const nomeMes = k => { const [a, m] = k.split('-').map(Number); return cap(MESES[m - 1]) + ' de ' + a; };
 const plural = (n, s, p) => n + ' ' + (n === 1 ? s : p);
 
@@ -172,7 +187,7 @@ function normalizar(v) {
     passos: passos.map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b),
     nota: v.nota ? String(v.nota) : '',
     por: v.por ? String(v.por) : '',
-    atualizado: v.atualizado ? String(v.atualizado) : '',
+    atualizado: paraISO(v.atualizado),
   };
 }
 Object.keys(estado).forEach(k => { estado[k] = normalizar(estado[k]); });
@@ -266,7 +281,7 @@ function aplicarServidor(j) {
   Object.keys(j.itens || {}).forEach(id => { novo[id] = normalizar(j.itens[id]); });
   fila.forEach(m => { novo[m.id] = normalizar(Object.assign({}, novo[m.id], m.campos, { por: m.por, atualizado: m.quando })); });
   const pend = fila.map(m => ({ quando: m.quando, quem: m.por, id: m.id, entrega: m.entrega, texto: m.texto })).reverse();
-  const hist = pend.concat((j.historico || []).map(h => ({ quando: String(h.quando || ''), quem: h.quem, id: h.id, entrega: h.entrega, texto: h.texto }))).slice(0, 80);
+  const hist = pend.concat((j.historico || []).map(h => ({ quando: paraISO(h.quando), quem: h.quem, id: h.id, entrega: h.entrega, texto: h.texto }))).slice(0, 80);
   const mudou = JSON.stringify(novo) !== JSON.stringify(estado) || JSON.stringify(hist.slice(0, 10)) !== JSON.stringify(historico.slice(0, 10));
   estado = novo; historico = hist;
   LS.set('estado', estado); LS.set('historico', historico);
@@ -504,7 +519,7 @@ function telaInicio() {
         </section>
         <section class="secao">
           <div class="secao-cab"><h2>Últimas mudanças</h2></div>
-          ${historico.length ? `<ul class="atividade">${historico.slice(0, 8).map(h => `<li>
+          ${historico.some(h => ITEM[h.id]) ? `<ul class="atividade">${historico.filter(h => ITEM[h.id]).slice(0, 8).map(h => `<li>
             ${avatar(h.quem, 'peq')}
             <p><b>${esc(PESSOA[h.quem] ? PESSOA[h.quem].nome : h.quem)}</b> ${esc(h.texto)}${ITEM[h.id] ? ` em <button class="link-txt" data-acao="abrir" data-id="${h.id}">${esc(ITEM[h.id].titulo)}</button>` : h.entrega ? ` em ${esc(h.entrega)}` : ''}<small>${fmtQuando(h.quando)}</small></p>
           </li>`).join('')}</ul>` : `<div class="vazio pequeno">${ic('relogio')}<p>Ninguém mexeu em nada ainda.</p></div>`}
