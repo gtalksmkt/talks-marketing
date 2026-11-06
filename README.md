@@ -10,9 +10,11 @@ Funciona no navegador do computador e pode ser instalado no celular (iPhone e An
 
 | Pessoa | Função |
 | --- | --- |
-| Thiago | Designer e social media |
-| Manu | Editora de vídeo e responsável pelos vídeos (pede os vídeos aos professores com o roteiro do Yuri) |
-| Yuri | Designer, social media e produção (roteiros, lives, páginas, textos, revisão) |
+| Thiago | Faz as artes de tudo, menos as do Atualiza Talks. Conteúdo do Emergency e do Intensive: recebe do professor (com a legenda), faz o carrossel e publica. Arte sem copy? Cobra o Yuri. |
+| Manu | Edita os vídeos (pede o roteiro ao Yuri e o vídeo ao professor) e publica os posts e vídeos que não são de conteúdo. |
+| Yuri | Cronograma, copy das artes, roteiros, legendas (as de conteúdo vêm do professor), revisão, páginas e todas as artes do Atualiza Talks. |
+
+No app, cada arte do Thiago segue: copy (Yuri) → arte (Thiago) → revisão (Yuri) → Drive (Thiago) → legenda (Yuri). Quando a entrega fica **Pronta**, vira "Sua vez" de quem publica (regra em `publicacao` no `dados.js`), que agenda e muda para **Programado**.
 
 ## Como a equipe usa
 

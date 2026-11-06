@@ -235,20 +235,32 @@ function padrao(id) {
 const st = id => estado[id] || padrao(id);
 const feito = id => FEITO.has(st(id).status);
 const atrasado = it => !feito(it.id) && !!it.prazo && diasAte(it.prazo) < 0;
-const envolvidos = it => Array.from(new Set([it.resp].concat(it.passos.map(p => p.r).filter(Boolean)))).filter(p => PESSOA[p]);
+// quem programa a publicação quando fica pronta (conteúdo → Thiago; o resto → Manu; ver dados.js)
+function publicaDe(it) {
+  if (Object.prototype.hasOwnProperty.call(it, 'publica')) return PESSOA[it.publica] ? it.publica : null;
+  if (!it.publicar || it.categoria === 'trafego' || ['Página', 'Live'].includes(it.formato)) return null;
+  const regra = D.publicacao || {};
+  const p = it.categoria === 'conteudo' ? regra.conteudo : regra.outros;
+  return PESSOA[p] ? p : null;
+}
+const faltaProgramar = it => st(it.id).status === 'pronto' && !!publicaDe(it);
+const envolvidos = it => Array.from(new Set([it.resp, publicaDe(it)].concat(it.passos.map(p => p.r)).filter(Boolean))).filter(p => PESSOA[p]);
 const proximoPasso = it => {
   const s = st(it.id);
   const i = it.passos.findIndex((p, k) => !s.passos.includes(k));
   return i < 0 ? null : it.passos[i];
 };
-// é "meu" se eu sou o responsável ou se o próximo passo é meu ("Sua vez")
+// é "meu" se eu sou o responsável, se o próximo passo é meu ou se ficou pronto e eu programo ("Sua vez")
 const meu = it => {
   if (!eu) return false;
   if (it.resp === eu) return true;
+  if (faltaProgramar(it)) return publicaDe(it) === eu;
   if (feito(it.id)) return false;
   const p = proximoPasso(it);
   return !!(p && p.r === eu);
 };
+// o que ainda depende de mim (fazer, um passo meu ou programar a publicação)
+const pendenteParaMim = it => !!eu && ((meu(it) && !feito(it.id)) || (faltaProgramar(it) && publicaDe(it) === eu));
 const podeAdicionar = () => !!eu && (D.quemAdiciona || []).includes(eu);
 const aguardando = it => it.depende.filter(d => ITEM[d] && !feito(d));
 const contaPassos = it => [st(it.id).passos.filter(i => i < it.passos.length).length, it.passos.length];
@@ -430,8 +442,13 @@ function cardHTML(it, o = {}) {
     ${s.travado ? `<p class="card-aviso trava">${ic('alerta')}<span>Travado: ${esc(s.motivo || 'sem motivo informado')}</span></p>` : ''}
     ${!s.travado && !fe && esp.length ? `<p class="card-aviso espera">${ic('relogio')}<span>Aguardando ${esc(ITEM[esp[0]].titulo)}${esp.length > 1 ? ' e mais ' + (esp.length - 1) : ''}</span></p>` : ''}
     ${(() => {
+      const pub = faltaProgramar(it) ? publicaDe(it) : null;
+      if (pub) return `<p class="card-prox">${ic('agendado')}<span>${pub === eu ? 'Sua vez: programar' : 'Falta programar'} para ${fmtCurta(it.publicar)}${it.hora ? ', ' + esc(it.hora) : ''}${pub !== eu ? ` <b>(${esc(PESSOA[pub].nome)})</b>` : ''}</span></p>`;
       const px = !s.travado && !fe && !esp.length ? proximoPasso(it) : null;
-      return px ? `<p class="card-prox">${ic('seta')}<span>Próximo: ${esc(px.t)}${px.r && px.r !== it.resp && PESSOA[px.r] ? ` <b>(${esc(PESSOA[px.r].nome)})</b>` : ''}</span></p>` : '';
+      if (!px) return '';
+      const outro = px.r && px.r !== it.resp && PESSOA[px.r];
+      const txt = px.r === eu && it.resp !== eu ? 'Sua vez: ' + esc(px.t) : outro ? `Esperando ${esc(PESSOA[px.r].nome)}: ${esc(px.t)}` : 'Próximo: ' + esc(px.t);
+      return `<p class="card-prox ${outro && px.r !== eu ? 'espera-outro' : ''}">${ic('seta')}<span>${txt}</span></p>`;
     })()}
     <div class="card-rodape">
       ${it.prazo ? `<span class="card-prazo ${at ? 'ruim' : !fe && n <= 2 ? 'perto' : ''}">${ic('relogio')}${textoPrazo(it)}</span>` : ''}
@@ -545,9 +562,9 @@ function heroMarcos() {
 function telaInicio() {
   const me = PESSOA[eu] || { nome: '' };
   const doMesItens = ITENS.filter(doMes);
-  const meusAbertos = doMesItens.filter(it => meu(it) && !feito(it.id)).sort(ordenar);
+  const meusAbertos = doMesItens.filter(pendenteParaMim).sort(ordenar);
   const n = {
-    fazer: meusAbertos.filter(i => ['afazer', 'producao'].includes(st(i.id).status)).length,
+    fazer: meusAbertos.filter(i => ['afazer', 'producao'].includes(st(i.id).status) || faltaProgramar(i)).length,
     aprov: meusAbertos.filter(i => st(i.id).status === 'aprovacao').length,
     trav: meusAbertos.filter(i => st(i.id).travado).length,
     atr: meusAbertos.filter(atrasado).length,
@@ -557,7 +574,7 @@ function telaInicio() {
   const liberar = doMesItens.filter(x => x.resp === eu && !feito(x.id))
     .map(x => ({ x, deps: doMesItens.filter(y => y.depende.includes(x.id) && !feito(y.id) && y.resp !== eu) }))
     .filter(o => o.deps.length).sort((a, b) => comPrazo(a.x, b.x));
-  const programar = doMesItens.filter(i => i.publicar && st(i.id).status === 'pronto').sort((a, b) => (a.publicar < b.publicar ? -1 : 1));
+  const programar = doMesItens.filter(faltaProgramar).sort((a, b) => (a.publicar < b.publicar ? -1 : 1));
   const total = doMesItens.length, prontos = doMesItens.filter(i => feito(i.id)).length;
   const hoje = new Date();
   const LIM = 6;
@@ -604,7 +621,7 @@ function telaInicio() {
         </section>
         <section class="secao">
           <div class="secao-cab"><h2>Falta programar</h2></div>
-          ${programar.length ? `<div class="lista-mini">${programar.map(it => linhaMini(it, `Publicar ${fmtCurta(it.publicar)} (${fmtFalta(it.publicar)}) · já está pronto`)).join('')}</div>`
+          ${programar.length ? `<div class="lista-mini">${programar.map(it => linhaMini(it, `Publicar ${fmtCurta(it.publicar)}${it.hora ? ', ' + esc(it.hora) : ''} (${fmtFalta(it.publicar)}) · ${esc(PESSOA[publicaDe(it)].nome)} programa`)).join('')}</div>`
             : `<div class="vazio pequeno">${ic('agendado')}<p>Nada pronto esperando para ser programado.</p></div>`}
         </section>
         <section class="secao">
@@ -780,18 +797,21 @@ function telaAgenda() {
   const situacaoPub = it => {
     const s = st(it.id);
     if (s.status === 'programado') return `<span class="pub ok">${ic('agendado')} ${diasAte(it.publicar) < 0 ? 'Publicado' : 'Programado'}</span>`;
-    if (s.status === 'pronto') return `<span class="pub falta">${ic('alerta')} Falta programar</span>`;
+    if (s.status === 'pronto') return `<span class="pub falta">${ic('alerta')} Falta programar${publicaDe(it) ? ' · ' + esc(PESSOA[publicaDe(it)].nome) : ''}</span>`;
     const n = diasAte(it.publicar);
     return `<span class="pub ${n <= 2 ? 'ruim' : ''}">${ic('relogio')} Ainda não está pronto</span>`;
   };
   const entrada = e => {
     const it = e.it, s = st(it.id), pf = PERFIL[it.perfil];
-    return `<button class="ag ${meu(it) ? 'meu' : ''} ${FEITO.has(s.status) && e.tipo === 'prazo' ? 'feito' : ''}" data-acao="abrir" data-id="${it.id}" style="${corPerfil(pf)}">
+    const pub = e.tipo === 'publicar' ? publicaDe(it) : null;
+    const quem = pub || it.resp;
+    const destaque = e.tipo === 'publicar' && pub ? pub === eu : meu(it);
+    return `<button class="ag ${destaque ? 'meu' : ''} ${FEITO.has(s.status) && e.tipo === 'prazo' ? 'feito' : ''}" data-acao="abrir" data-id="${it.id}" style="${corPerfil(pf)}">
       <span class="ag-tipo ${e.tipo}">${ic(e.tipo === 'prazo' ? 'bandeira' : 'megafone')}</span>
       <span class="ag-txt">
         <small>${e.tipo === 'prazo' ? 'Entrega' : 'Publicação' + (it.hora ? ', ' + esc(it.hora) : '')} · <span class="ag-pf"><i></i>${esc(pf.curto)}</span></small>
         <b>${esc(it.titulo)}</b>
-        <span class="ag-linha">${avatar(it.resp, 'peq')}${esc(PESSOA[it.resp].nome)}${s.travado ? ` · <span class="t-alerta">${ic('alerta')} travado</span>` : ''}</span>
+        <span class="ag-linha">${avatar(quem, 'peq')}${pub ? 'Publica: ' : ''}${esc(PESSOA[quem].nome)}${s.travado ? ` · <span class="t-alerta">${ic('alerta')} travado</span>` : ''}</span>
       </span>
       <span class="ag-dir">${e.tipo === 'publicar' ? situacaoPub(it) : chipStatus(s.status)}</span>
     </button>`;
@@ -939,11 +959,13 @@ function folhaItem(id) {
     ${s.travado ? `<div class="trava-alerta">${ic('alerta')}<div><b>Travado</b><p>${esc(s.motivo || 'Sem motivo informado')}</p></div><button class="btn btn-sec" data-acao="destravar" data-id="${id}">Já resolveu: destravar</button></div>` : ''}
     <div class="it-meta">
       <div class="meta"><small>Responsável</small><span>${avatar(it.resp, 'peq')}${esc(resp.nome)}${it.resp === eu ? ' (você)' : ''}</span></div>
+      ${publicaDe(it) ? `<div class="meta"><small>Quem publica</small><span>${avatar(publicaDe(it), 'peq')}${esc(PESSOA[publicaDe(it)].nome)}${publicaDe(it) === eu ? ' (você)' : ''}</span></div>` : ''}
       ${it.prazo ? `<div class="meta ${at ? 'ruim' : ''}"><small>Prazo para ficar pronto</small><span>${cap(fmtCurta(it.prazo))} · ${at ? 'atrasado' : fmtFalta(it.prazo)}</span></div>` : ''}
       ${it.publicar ? `<div class="meta"><small>Dia de publicar</small><span>${cap(fmtCurta(it.publicar))}${it.hora ? ', ' + esc(it.hora) : ''} · ${fmtFalta(it.publicar)}</span></div>` : ''}
     </div>
 
     <section class="it-sec">
+      ${faltaProgramar(it) && publicaDe(it) === eu ? `<div class="sua-vez">${ic('agendado')}<p><b>Sua vez: programar a publicação</b> para ${fmtCurta(it.publicar)}${it.hora ? ', ' + esc(it.hora) : ''}. Depois de agendar, mude a etapa para <b>Programado</b>.</p></div>` : ''}
       <h3>Em que etapa está?</h3>
       <div class="st-opcoes">${STATUS.map(x => `<button class="st-op ${x.id === s.status ? 'ativo' : ''}" data-acao="status" data-id="${id}" data-v="${x.id}" style="--st:${x.cor}" aria-pressed="${x.id === s.status}">${ic(x.ic)}<span>${x.nome}</span></button>`).join('')}</div>
       <p class="dica">${ST[s.status].dica}</p>
@@ -1036,6 +1058,12 @@ function folhaMenu() {
       <h3>Sincronização com a equipe</h3>
       <p class="dica">${esc(textoSyncPuro())}</p>
       ${ENDPOINT ? `<button class="btn btn-sec" data-acao="sincronizar">${ic('sync')} Sincronizar agora</button>` : ''}
+    </section>
+    <section class="it-sec">
+      <h3>Quem faz o quê</h3>
+      <div class="processo">${(D.processo || []).filter(p => PESSOA[p.quem]).map(p => `<div class="pp ${p.quem === eu ? 'eu' : ''}">
+        ${avatar(p.quem)}<div><b>${esc(PESSOA[p.quem].nome)}${p.quem === eu ? ' (você)' : ''}</b><ul>${p.faz.map(f => `<li>${esc(f)}</li>`).join('')}</ul></div>
+      </div>`).join('')}</div>
     </section>
     <section class="it-sec">
       <h3>O que cada cor quer dizer</h3>
@@ -1296,7 +1324,7 @@ function passosTour() {
     { aba: 'quadro', alvo: '[data-tour="filtros"]', titulo: 'Perfis e pessoas', texto: 'Vermelho é Emergency Talks, azul é Ped Talks, verde é Intensive Talks e branco é Grupo Talks. Dá para ver só um perfil ou só o que é de uma pessoa.' },
     { aba: 'lancamentos', alvo: '[data-tour="aba-lancamentos"]', titulo: 'Lançamentos', texto: 'O passo a passo completo de cada lançamento, quem faz o quê e quanto falta.' },
     { aba: 'agenda', alvo: '[data-tour="aba-agenda"]', titulo: 'Agenda', texto: 'Os prazos de cada dia e o que precisa ser programado para sair nas redes.' },
-    { aba: 'inicio', alvo: '[data-tour="perfil"]', titulo: 'Seu perfil e ajuda', texto: 'Toque aqui para trocar de pessoa ou ver este tutorial de novo. O botão “?” também abre o tutorial.' },
+    { aba: 'inicio', alvo: '[data-tour="perfil"]', titulo: 'Seu perfil e ajuda', texto: 'Toque aqui para ver quem faz o quê na equipe, trocar de pessoa ou ver este tutorial de novo. O botão “?” também abre o tutorial.' },
   ];
 }
 function acharVisivel(sel) {

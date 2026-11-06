@@ -233,6 +233,15 @@ p { margin: 0; }
 .card-prox { display: flex; gap: 5px; align-items: flex-start; margin-top: 8px; font-size: 12.5px; line-height: 1.3; color: var(--txt2); }
 .card-prox .ic { font-size: 14px; margin-top: 1px; color: var(--redtxt); }
 .card-prox b { color: var(--txt); font-weight: 600; }
+.card-prox.espera-outro .ic { color: var(--txt3); }
+.sua-vez { display: flex; gap: 10px; align-items: flex-start; margin: 18px 0 -6px; padding: 12px 14px; border-radius: var(--r); background: rgba(211,28,43,.1); border: 1px solid rgba(211,28,43,.45); font-size: 13.5px; color: var(--txt2); }
+.sua-vez .ic { font-size: 18px; color: var(--redtxt); margin-top: 1px; }
+.sua-vez b { color: var(--txt); }
+.processo { display: grid; gap: 10px; }
+.pp { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 14px; background: rgba(255,255,255,.035); border: 1px solid var(--linha); }
+.pp.eu { border-color: rgba(211,28,43,.5); }
+.pp b { font-size: 14.5px; }
+.pp ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; color: var(--txt2); display: grid; gap: 3px; }
 .card-rodape { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 11px; font-size: 12px; color: var(--txt3); }
 .card-rodape > span { display: inline-flex; align-items: center; gap: 5px; }
 .card-rodape .ic { font-size: 13px; }
