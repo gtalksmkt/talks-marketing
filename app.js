@@ -101,6 +101,7 @@ const I = {
   mao: '<path d="M8 13V4.5a1.5 1.5 0 0 1 3 0V12"/><path d="M11 11.5v-2a1.5 1.5 0 0 1 3 0V12"/><path d="M14 10.5a1.5 1.5 0 0 1 3 0V12"/><path d="M17 11.5a1.5 1.5 0 0 1 3 0V16a6 6 0 0 1-6 6h-2a6 6 0 0 1-5-2.7L4.3 15a1.5 1.5 0 0 1 2.4-1.8L8 15"/>',
   cadeado: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   nuvem: '<path d="M17.5 19H8a6 6 0 1 1 5.7-7.9A4.5 4.5 0 1 1 17.5 19z"/>',
+  mais: '<path d="M12 5v14M5 12h14"/>',
 };
 const ic = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[n] || ''}</svg>`;
 const SIMBOLO = '<svg class="simbolo" viewBox="-1 -1 4 3.7321" aria-hidden="true"><path d="M-1 -1H0A1 1 0 1 1 -1 0Z"/><path d="M2 -1H3V0A1 1 0 1 1 2 -1Z"/><path d="M2 1.7321V2.7321H1A1 1 0 1 1 2 1.7321Z"/></svg>';
@@ -120,20 +121,50 @@ const MOTIVOS = ['Esperando o professor', 'Esperando aprovação', 'Esperando a 
 const PESSOA = Object.fromEntries(D.equipe.map(p => [p.id, p]));
 const PERFIL = Object.fromEntries(D.perfis.map(p => [p.id, p]));
 const CATEG = Object.fromEntries(D.categorias.map(c => [c.id, c]));
-const PROJETOS = D.projetos.map(p => Object.assign({}, p, {
-  itens: (p.itens || []).map(it => Object.assign({}, it, {
+function prepararItem(it, p) {
+  return Object.assign({}, it, {
     id: p.id + '.' + it.chave,
     projeto: p.id,
     perfil: it.perfil || p.perfil,
     passos: (it.passos || []).map(x => (typeof x === 'string' ? { t: x } : x)),
     depende: (it.depende || []).map(c => (c.includes('.') ? c : p.id + '.' + c)),
-  })),
-}));
-const PROJ = Object.fromEntries(PROJETOS.map(p => [p.id, p]));
-const ITENS = PROJETOS.flatMap(p => p.itens);
-const ITEM = Object.fromEntries(ITENS.map(i => [i.id, i]));
-const MESES_DISP = Array.from(new Set(PROJETOS.map(p => p.mes))).sort();
-const ORDEM_FASE = ['Planejamento', 'Produção', 'Divulgação', 'Conteúdo do mês'];
+  });
+}
+// projetos e entregas do dados.js (fixos) + entregas criadas pelo app (guardadas na planilha)
+const BASE = D.projetos.map(p => Object.assign({}, p, { itens: (p.itens || []).map(it => prepararItem(it, p)) }));
+const BASE_PROJ = Object.fromEntries(BASE.map(p => [p.id, p]));
+let PROJETOS = BASE, PROJ = BASE_PROJ, ITENS = BASE.flatMap(p => p.itens), ITEM = Object.fromEntries(ITENS.map(i => [i.id, i]));
+const MESES_DISP = Array.from(new Set(BASE.map(p => p.mes))).sort();
+
+function itemExtra(id, d) {
+  const p = BASE_PROJ[d.projeto];
+  return {
+    id, chave: id, projeto: p.id, extra: true,
+    perfil: PERFIL[d.perfil] ? d.perfil : p.perfil,
+    titulo: String(d.titulo || 'Entrega sem nome'),
+    resp: PESSOA[d.resp] ? d.resp : (D.equipe[0] || {}).id,
+    formato: String(d.formato || ''),
+    categoria: CATEG[d.categoria] ? d.categoria : 'comercial',
+    fase: String(d.fase || 'Entregas novas'),
+    prazo: /^\d{4}-\d{2}-\d{2}$/.test(d.prazo || '') ? d.prazo : '',
+    publicar: /^\d{4}-\d{2}-\d{2}$/.test(d.publicar || '') ? d.publicar : '',
+    hora: String(d.hora || ''),
+    descricao: String(d.descricao || ''),
+    passos: (Array.isArray(d.passos) ? d.passos : []).filter(Boolean).map(t => ({ t: String(t) })),
+    depende: [],
+  };
+}
+function montarItens() {
+  const extras = {};
+  Object.keys(estado).forEach(id => {
+    const d = estado[id] && estado[id].def;
+    if (d && !d.apagado && BASE_PROJ[d.projeto]) (extras[d.projeto] = extras[d.projeto] || []).push(itemExtra(id, d));
+  });
+  PROJETOS = BASE.map(p => (extras[p.id] ? Object.assign({}, p, { itens: p.itens.concat(extras[p.id]) }) : p));
+  PROJ = Object.fromEntries(PROJETOS.map(p => [p.id, p]));
+  ITENS = PROJETOS.flatMap(p => p.itens);
+  ITEM = Object.fromEntries(ITENS.map(i => [i.id, i]));
+}
 
 /* ============================ plataforma ============================ */
 const UA = navigator.userAgent || '';
@@ -179,6 +210,8 @@ function normalizar(v) {
   if (typeof passos === 'string') { try { passos = JSON.parse(passos || '[]'); } catch (e) { passos = []; } }
   if (!Array.isArray(passos)) passos = [];
   const trav = v.travado === true || v.travado === 'TRUE' || v.travado === 'true' || v.travado === 1;
+  let def = v.def;
+  if (typeof def === 'string') { try { def = def ? JSON.parse(def) : null; } catch (e) { def = null; } }
   return {
     status: ST[v.status] ? v.status : 'afazer',
     link: v.link ? String(v.link) : '',
@@ -188,21 +221,35 @@ function normalizar(v) {
     nota: v.nota ? String(v.nota) : '',
     por: v.por ? String(v.por) : '',
     atualizado: paraISO(v.atualizado),
+    def: def && typeof def === 'object' ? def : null,
   };
 }
 Object.keys(estado).forEach(k => { estado[k] = normalizar(estado[k]); });
+montarItens();
 
-const st = id => estado[id] || normalizar({});
+// etapa de partida definida no dados.js (vale até alguém mexer na entrega)
+function padrao(id) {
+  const ini = ITEM[id] && ITEM[id].inicial;
+  return normalizar(!ini ? {} : typeof ini === 'string' ? { status: ini } : ini);
+}
+const st = id => estado[id] || padrao(id);
 const feito = id => FEITO.has(st(id).status);
 const atrasado = it => !feito(it.id) && !!it.prazo && diasAte(it.prazo) < 0;
 const envolvidos = it => Array.from(new Set([it.resp].concat(it.passos.map(p => p.r).filter(Boolean)))).filter(p => PESSOA[p]);
+const proximoPasso = it => {
+  const s = st(it.id);
+  const i = it.passos.findIndex((p, k) => !s.passos.includes(k));
+  return i < 0 ? null : it.passos[i];
+};
+// é "meu" se eu sou o responsável ou se o próximo passo é meu ("Sua vez")
 const meu = it => {
   if (!eu) return false;
   if (it.resp === eu) return true;
   if (feito(it.id)) return false;
-  const s = st(it.id);
-  return it.passos.some((p, i) => p.r === eu && !s.passos.includes(i));
+  const p = proximoPasso(it);
+  return !!(p && p.r === eu);
 };
+const podeAdicionar = () => !!eu && (D.quemAdiciona || []).includes(eu);
 const aguardando = it => it.depende.filter(d => ITEM[d] && !feito(d));
 const contaPassos = it => [st(it.id).passos.filter(i => i < it.passos.length).length, it.passos.length];
 const doMes = it => PROJ[it.projeto].mes === ui.mes;
@@ -221,13 +268,17 @@ function mudar(id, campos, texto) {
   const it = ITEM[id];
   if (!it || !eu) return;
   const agora = new Date().toISOString();
-  estado[id] = normalizar(Object.assign({}, estado[id], campos, { por: eu, atualizado: agora }));
+  const base = st(id);
+  // primeira mudança numa entrega com etapa de partida: manda a etapa junto para a planilha
+  const envio = estado[id] || !it.inicial ? campos : Object.assign({ status: base.status, travado: base.travado, motivo: base.motivo }, campos);
+  estado[id] = normalizar(Object.assign({}, base, campos, { por: eu, atualizado: agora }));
+  if ('def' in campos) montarItens();
   LS.set('estado', estado);
   historico.unshift({ quando: agora, quem: eu, id, entrega: it.titulo, texto });
   historico = historico.slice(0, 80);
   LS.set('historico', historico);
   if (ENDPOINT) {
-    fila.push({ id, campos, por: eu, quando: agora, texto, entrega: it.titulo });
+    fila.push({ id, campos: envio, por: eu, quando: agora, texto, entrega: it.titulo });
     LS.set('fila', fila);
     clearTimeout(sync.timer);
     sync.timer = setTimeout(enviar, 500);
@@ -274,7 +325,9 @@ function salvarLink(id, valor) {
 }
 
 /* ========================== sincronização ========================== */
-const sync = { estado: ENDPOINT ? 'carregando' : 'local', ocupado: false, repetir: false, timer: 0, erro: '' };
+const sync = { estado: ENDPOINT ? 'carregando' : 'local', ocupado: false, repetir: false, timer: 0, erro: '', versao: LS.get('versaoPlanilha', 0) };
+// entregas novas pelo app precisam do código da planilha versão 2 (coluna "def")
+const suportaExtras = () => !ENDPOINT || sync.versao >= 2;
 
 function aplicarServidor(j) {
   const novo = {};
@@ -284,6 +337,8 @@ function aplicarServidor(j) {
   const hist = pend.concat((j.historico || []).map(h => ({ quando: paraISO(h.quando), quem: h.quem, id: h.id, entrega: h.entrega, texto: h.texto }))).slice(0, 80);
   const mudou = JSON.stringify(novo) !== JSON.stringify(estado) || JSON.stringify(hist.slice(0, 10)) !== JSON.stringify(historico.slice(0, 10));
   estado = novo; historico = hist;
+  montarItens();
+  sync.versao = Number(j.versao) || 1; LS.set('versaoPlanilha', sync.versao);
   LS.set('estado', estado); LS.set('historico', historico);
   ultimoSync = new Date().toISOString(); LS.set('ultimoSync', ultimoSync);
   if (mudou) pedirRender();
@@ -336,8 +391,11 @@ function atualizarAgora() { if (!ENDPOINT) return; if (fila.length) enviar(); el
 /* ============================ pedaços de UI ============================ */
 const avatar = (pid, cls = '') => {
   const p = PESSOA[pid]; if (!p) return '';
+  if (p.foto) return `<span class="av foto ${cls}" style="--cor:${p.cor}" title="${esc(p.nome)}"><img src="${esc(p.foto)}" alt="" decoding="async"></span>`;
   return `<span class="av ${cls}" style="--cor:${p.cor}" title="${esc(p.nome)}">${esc(p.nome[0])}</span>`;
 };
+const dm = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+const quandoMarco = m => cap(fmtCurta(m.data)) + (m.ate ? ' a ' + fmtCurta(m.ate) : '') + (m.hora ? ' · ' + m.hora : '');
 const corPerfil = p => `--pf:${p.cor};--pf-t:${p.texto}`;
 const chipStatus = sid => `<span class="st-chip" style="--st:${ST[sid].cor}">${ic(ST[sid].ic)}${ST[sid].nome}</span>`;
 const pfChip = pid => { const p = PERFIL[pid]; return p ? `<span class="pf-chip" style="${corPerfil(p)}"><i></i>${esc(p.nome)}</span>` : ''; };
@@ -364,13 +422,17 @@ function cardHTML(it, o = {}) {
     <div class="card-topo">
       <span class="card-pf"><i></i>${esc(p.curto)}</span>
       <span class="card-fmt">${esc(it.formato || '')}</span>
-      ${ehMeu ? '<span class="tag-voce">Você</span>' : ''}
+      ${ehMeu ? `<span class="tag-voce">${it.resp === eu ? 'Você' : 'Sua vez'}</span>` : ''}
       ${o.status ? chipStatus(s.status) : ''}
     </div>
     <h3 class="card-titulo">${esc(it.titulo)}</h3>
     <p class="card-proj">${esc(proj.nome)}</p>
     ${s.travado ? `<p class="card-aviso trava">${ic('alerta')}<span>Travado: ${esc(s.motivo || 'sem motivo informado')}</span></p>` : ''}
     ${!s.travado && !fe && esp.length ? `<p class="card-aviso espera">${ic('relogio')}<span>Aguardando ${esc(ITEM[esp[0]].titulo)}${esp.length > 1 ? ' e mais ' + (esp.length - 1) : ''}</span></p>` : ''}
+    ${(() => {
+      const px = !s.travado && !fe && !esp.length ? proximoPasso(it) : null;
+      return px ? `<p class="card-prox">${ic('seta')}<span>Próximo: ${esc(px.t)}${px.r && px.r !== it.resp && PESSOA[px.r] ? ` <b>(${esc(PESSOA[px.r].nome)})</b>` : ''}</span></p>` : '';
+    })()}
     <div class="card-rodape">
       ${it.prazo ? `<span class="card-prazo ${at ? 'ruim' : !fe && n <= 2 ? 'perto' : ''}">${ic('relogio')}${textoPrazo(it)}</span>` : ''}
       ${nt ? `<span class="card-passos ${nf === nt ? 'completo' : ''}">${ic('lista')}${nf}/${nt}</span>` : ''}
@@ -452,6 +514,34 @@ function heroLancamentos() {
   </section>`;
 }
 
+function heroMarcos() {
+  const hoje = hojeISO();
+  const ms = (D.marcos || []).filter(m => (m.ate || m.data) >= hoje).sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
+  if (!ms.length) return heroLancamentos();
+  const m = ms[0];
+  const n = diasAte(m.data);
+  const titulo = m.data <= hoje ? (m.ate && m.ate > hoje && m.data < hoje ? 'Acontecendo agora' : 'É hoje!') : n === 1 ? 'É amanhã' : `Faltam <b>${n}</b> dias`;
+  const pf = PERFIL[m.perfil] || D.perfis[0];
+  const itens = ITENS.filter(doMes);
+  const nf = itens.filter(i => feito(i.id)).length;
+  const pct = itens.length ? Math.round(nf / itens.length * 100) : 0;
+  const C = 2 * Math.PI * 42;
+  return `<section class="hero" data-acao="ir-lancamentos" role="button" tabindex="0">
+    <div class="hero-txt">
+      <span class="sobre">Próximo na linha do tempo</span>
+      <h2>${titulo}</h2>
+      <p class="hero-marco" style="${corPerfil(pf)}"><i></i><span>${esc(m.titulo)}</span></p>
+      <p class="hero-data">${ic('agenda')} ${quandoMarco(m)}</p>
+    </div>
+    <div class="hero-anel" aria-label="${pct}% do mês pronto">
+      <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" class="anel-fundo"/><circle cx="50" cy="50" r="42" class="anel-valor" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct / 100)}"/></svg>
+      <div><b>${pct}%</b><small>do mês<br>pronto</small></div>
+    </div>
+    ${ms.length > 1 ? `<ol class="hero-linha">${ms.slice(1, 6).map(x => `<li style="${corPerfil(PERFIL[x.perfil] || pf)}"><span class="hl-data">${dm(x.data)}${x.ate ? '–' + dm(x.ate) : ''}</span><i></i><span class="hl-tit">${esc(x.titulo)}${x.hora ? ' · ' + esc(x.hora) : ''}</span></li>`).join('')}</ol>` : ''}
+    <span class="hero-ver">Ver lançamentos e linha do tempo ${ic('seta')}</span>
+  </section>`;
+}
+
 function telaInicio() {
   const me = PESSOA[eu] || { nome: '' };
   const doMesItens = ITENS.filter(doMes);
@@ -483,7 +573,7 @@ function telaInicio() {
     ${avisos()}
     <div class="inicio-grade">
       <div class="col-principal">
-        ${heroLancamentos()}
+        ${D.marcos ? heroMarcos() : heroLancamentos()}
         <div class="numeros">
           <button class="numero" data-acao="ver-meus"><b>${n.fazer}</b><span>Para fazer</span></button>
           <button class="numero" data-acao="ver-meus" style="--st:${ST.aprovacao.cor}"><b>${n.aprov}</b><span>Em aprovação</span></button>
@@ -545,6 +635,7 @@ function telaQuadro() {
       <div><p class="sobre">${nomeMes(ui.mes)}</p><h1>Quadro</h1><p class="sub">${TOQUE ? 'Segure um card e arraste para mudar a etapa.' : 'Arraste os cards para mudar a etapa.'} Ou toque no card e escolha a etapa.</p></div>
       <div class="cab-dir">${seletorMes()}
         <label class="interruptor"><input type="checkbox" data-campo="destacar" ${ui.destacar ? 'checked' : ''}><span class="int-trilho"><span></span></span>Destacar o que é meu</label>
+        ${podeAdicionar() ? `<button class="btn btn-sec btn-nova" data-acao="nova">${ic('mais')} Nova entrega</button>` : ''}
       </div>
     </header>
     ${filtrosHTML()}
@@ -588,6 +679,7 @@ function telaLancamentos() {
     return `<article class="proj-card" data-acao="abrir-proj" data-id="${p.id}" style="${corPerfil(pf)}" role="button" tabindex="0">
       <div class="proj-topo">${marcaPerfil(pf)}${p.data ? `<span class="proj-quando">${cap(fmtCurta(p.data))}<small>${p.provisoria ? 'data provisória' : fmtFalta(p.data)}</small></span>` : ''}</div>
       <h2>${esc(p.nome)}</h2>
+      ${p.resumo ? `<p class="proj-sub">${esc(p.resumo)}</p>` : ''}
       ${barraStatus(p.itens)}
       <p class="proj-resumo">${resumoProjeto(p.itens)}</p>
       <div class="proj-pessoas">${D.equipe.map(pe => {
@@ -598,19 +690,36 @@ function telaLancamentos() {
   };
   return `<div class="pagina">
     <header class="cab-tela"><div><p class="sobre">${nomeMes(ui.mes)}</p><h1>Lançamentos e projetos</h1><p class="sub">Toque num lançamento para ver o passo a passo completo.</p></div><div class="cab-dir">${seletorMes()}</div></header>
+    ${linhaDoTempo()}
     ${filtrosHTML({ pessoa: false })}
     ${lancs.length ? `<h2 class="titulo-grupo">Lançamentos</h2><div class="projs">${lancs.map(card).join('')}</div>` : ''}
-    ${outros.length ? `<h2 class="titulo-grupo">Conteúdo do mês</h2><div class="projs">${outros.map(card).join('')}</div>` : ''}
+    ${outros.length ? `<h2 class="titulo-grupo">Conteúdo e produtos do mês</h2><div class="projs">${outros.map(card).join('')}</div>` : ''}
     ${!projs.length ? `<div class="vazio">${ic('foguete')}<p>Nenhum projeto ${ui.perfil !== 'todos' ? 'deste perfil ' : ''}neste mês.</p></div>` : ''}
   </div>`;
 }
 
+function linhaDoTempo() {
+  const hoje = hojeISO();
+  const ms = (D.marcos || []).filter(m => m.data.slice(0, 7) === ui.mes || (m.ate || '').slice(0, 7) === ui.mes);
+  if (!ms.length) return '';
+  return `<section class="linha-mes">
+    <h2 class="titulo-grupo">Linha do tempo</h2>
+    <ol class="marcos">${ms.map(m => {
+      const passou = (m.ate || m.data) < hoje, agora = m.data <= hoje && (m.ate || m.data) >= hoje;
+      const pf = PERFIL[m.perfil] || D.perfis[0];
+      const clic = m.projeto && PROJ[m.projeto] ? `data-acao="abrir-proj" data-id="${m.projeto}" role="button" tabindex="0"` : '';
+      return `<li class="marco ${passou ? 'passou' : ''} ${agora ? 'agora' : ''}" style="${corPerfil(pf)}" ${clic}>
+        <span class="mc-ponto"></span>
+        <span class="mc-txt"><small>${quandoMarco(m)}${agora ? ' · <b>agora</b>' : ''}</small><b>${esc(m.titulo)}</b></span>
+      </li>`;
+    }).join('')}</ol>
+  </section>`;
+}
+
 function telaProjeto(p) {
   const pf = PERFIL[p.perfil];
-  const fases = Array.from(new Set(p.itens.map(i => i.fase || 'Entregas'))).sort((a, b) => {
-    const ia = ORDEM_FASE.indexOf(a), ib = ORDEM_FASE.indexOf(b);
-    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-  });
+  // fases na ordem em que aparecem no dados.js; entregas novas no fim
+  const fases = Array.from(new Set(p.itens.map(i => i.fase || 'Entregas')));
   const nf = p.itens.filter(i => feito(i.id)).length;
   const pct = Math.round(nf / (p.itens.length || 1) * 100);
   const n = p.data ? diasAte(p.data) : null;
@@ -620,8 +729,8 @@ function telaProjeto(p) {
     return `<li class="lt ${fe ? 'feito' : ''} ${meu(it) ? 'meu' : ''}" style="--st:${s.travado ? 'var(--trava)' : ST[s.status].cor}">
       <span class="lt-marca">${ic(s.travado ? 'alerta' : ST[s.status].ic)}</span>
       <button class="lt-corpo" data-acao="abrir" data-id="${it.id}">
-        <span class="lt-linha1"><b>${esc(it.titulo)}</b>${meu(it) ? '<span class="tag-voce">Você</span>' : ''}</span>
-        <span class="lt-linha2">${avatar(it.resp, 'peq')}${esc(PESSOA[it.resp].nome)} · <span class="${at ? 't-ruim' : ''}">${textoPrazo(it)}</span>${it.publicar ? ` · publicar ${fmtCurta(it.publicar)}` : ''}</span>
+        <span class="lt-linha1"><b>${esc(it.titulo)}</b>${meu(it) ? `<span class="tag-voce">${it.resp === eu ? 'Você' : 'Sua vez'}</span>` : ''}</span>
+        <span class="lt-linha2">${avatar(it.resp, 'peq')}${esc(PESSOA[it.resp].nome)} · <span class="${at ? 't-ruim' : ''}">${textoPrazo(it)}</span>${it.publicar ? ` · publicar ${fmtCurta(it.publicar)}${it.hora ? ', ' + esc(it.hora) : ''}` : ''}</span>
         ${s.travado ? `<span class="lt-aviso t-alerta">${ic('alerta')} Travado: ${esc(s.motivo)}</span>` : ''}
         ${!s.travado && !fe && esp.length ? `<span class="lt-aviso">${ic('relogio')} Aguardando ${esp.map(d => esc(ITEM[d].titulo)).join(', ')}</span>` : ''}
       </button>
@@ -634,6 +743,7 @@ function telaProjeto(p) {
       <div class="proj-hero-txt">
         ${marcaPerfil(pf)}
         <h1>${esc(p.nome)}</h1>
+        ${p.resumo ? `<p class="proj-sub">${esc(p.resumo)}</p>` : ''}
         ${p.data ? `<p>${ic('foguete')} ${p.tipo === 'lancamento' ? 'Lançamento' : 'Data'}: <b>${fmtCurta(p.data)}</b> · ${n === 0 ? 'é hoje' : n > 0 ? 'faltam ' + plural(n, 'dia', 'dias') : 'já passou'}${p.provisoria ? ' · <span class="t-alerta">data provisória</span>' : ''}</p>` : ''}
         ${barraStatus(p.itens)}
         <p class="proj-resumo">${resumoProjeto(p.itens)}</p>
@@ -648,6 +758,7 @@ function telaProjeto(p) {
     }).join('')}</div>
     <h2 class="titulo-grupo">Passo a passo</h2>
     ${fases.map(f => `<section class="fase"><h3>${esc(f)}</h3><ol class="linha-tempo">${p.itens.filter(i => (i.fase || 'Entregas') === f).sort(comPrazo).map(passo).join('')}</ol></section>`).join('')}
+    ${podeAdicionar() ? `<button class="btn btn-sec btn-nova" data-acao="nova" data-id="${p.id}">${ic('mais')} Nova entrega neste projeto</button>` : ''}
   </div>`;
 }
 
@@ -668,7 +779,7 @@ function telaAgenda() {
 
   const situacaoPub = it => {
     const s = st(it.id);
-    if (s.status === 'programado') return `<span class="pub ok">${ic('agendado')} Programado</span>`;
+    if (s.status === 'programado') return `<span class="pub ok">${ic('agendado')} ${diasAte(it.publicar) < 0 ? 'Publicado' : 'Programado'}</span>`;
     if (s.status === 'pronto') return `<span class="pub falta">${ic('alerta')} Falta programar</span>`;
     const n = diasAte(it.publicar);
     return `<span class="pub ${n <= 2 ? 'ruim' : ''}">${ic('relogio')} Ainda não está pronto</span>`;
@@ -678,7 +789,7 @@ function telaAgenda() {
     return `<button class="ag ${meu(it) ? 'meu' : ''} ${FEITO.has(s.status) && e.tipo === 'prazo' ? 'feito' : ''}" data-acao="abrir" data-id="${it.id}" style="${corPerfil(pf)}">
       <span class="ag-tipo ${e.tipo}">${ic(e.tipo === 'prazo' ? 'bandeira' : 'megafone')}</span>
       <span class="ag-txt">
-        <small>${e.tipo === 'prazo' ? 'Entrega' : 'Publicação'} · <span class="ag-pf"><i></i>${esc(pf.curto)}</span></small>
+        <small>${e.tipo === 'prazo' ? 'Entrega' : 'Publicação' + (it.hora ? ', ' + esc(it.hora) : '')} · <span class="ag-pf"><i></i>${esc(pf.curto)}</span></small>
         <b>${esc(it.titulo)}</b>
         <span class="ag-linha">${avatar(it.resp, 'peq')}${esc(PESSOA[it.resp].nome)}${s.travado ? ` · <span class="t-alerta">${ic('alerta')} travado</span>` : ''}</span>
       </span>
@@ -793,9 +904,10 @@ function renderFolha(forcar) {
   if (!folha) return;
   const corpo = $('.folha-corpo', raiz);
   const foco = document.activeElement;
-  if (!forcar && corpo && foco && corpo.contains(foco) && /INPUT|TEXTAREA/.test(foco.tagName)) return;
+  if (!forcar && folha.tipo === 'nova') return;
+  if (!forcar && corpo && foco && corpo.contains(foco) && /INPUT|TEXTAREA|SELECT/.test(foco.tagName)) return;
   const topo = corpo && !forcar ? corpo.scrollTop : 0;
-  const conteudo = folha.tipo === 'item' ? folhaItem(folha.id) : folhaMenu();
+  const conteudo = folha.tipo === 'item' ? folhaItem(folha.id) : folha.tipo === 'nova' ? folhaNova(folha.projeto) : folhaMenu();
   const pf = folha.tipo === 'item' && ITEM[folha.id] ? corPerfil(PERFIL[ITEM[folha.id].perfil]) : '';
   if (!$('.folha', raiz)) {
     raiz.innerHTML = `<div class="folha-fundo" data-acao="fechar-folha"></div>
@@ -828,7 +940,7 @@ function folhaItem(id) {
     <div class="it-meta">
       <div class="meta"><small>Responsável</small><span>${avatar(it.resp, 'peq')}${esc(resp.nome)}${it.resp === eu ? ' (você)' : ''}</span></div>
       ${it.prazo ? `<div class="meta ${at ? 'ruim' : ''}"><small>Prazo para ficar pronto</small><span>${cap(fmtCurta(it.prazo))} · ${at ? 'atrasado' : fmtFalta(it.prazo)}</span></div>` : ''}
-      ${it.publicar ? `<div class="meta"><small>Dia de publicar</small><span>${cap(fmtCurta(it.publicar))} · ${fmtFalta(it.publicar)}</span></div>` : ''}
+      ${it.publicar ? `<div class="meta"><small>Dia de publicar</small><span>${cap(fmtCurta(it.publicar))}${it.hora ? ', ' + esc(it.hora) : ''} · ${fmtFalta(it.publicar)}</span></div>` : ''}
     </div>
 
     <section class="it-sec">
@@ -874,7 +986,40 @@ function folhaItem(id) {
       <textarea data-campo="nota" data-id="${id}" rows="3" placeholder="Algum recado para a equipe sobre esta entrega?" aria-label="Observações">${esc(s.nota)}</textarea>
       <p class="dica">Salva sozinho quando você sai do campo.</p>
     </section>
-    <p class="it-rodape">${s.atualizado ? `Última mudança: ${esc(PESSOA[s.por] ? PESSOA[s.por].nome : s.por)}, ${fmtQuando(s.atualizado)}.` : 'Ninguém mexeu nesta entrega ainda.'}</p>`;
+    <p class="it-rodape">${s.atualizado ? `Última mudança: ${esc(PESSOA[s.por] ? PESSOA[s.por].nome : s.por)}, ${fmtQuando(s.atualizado)}.` : 'Ninguém mexeu nesta entrega ainda.'}</p>
+    ${it.extra && podeAdicionar() ? `<button class="btn btn-ghost btn-apagar" data-acao="apagar-extra" data-id="${id}">Apagar esta entrega</button>` : ''}`;
+}
+
+function folhaNova(pid) {
+  const projs = PROJETOS.filter(p => p.mes === ui.mes);
+  const sel = BASE_PROJ[pid] ? pid : (projs[0] && projs[0].id);
+  const pf = sel ? BASE_PROJ[sel].perfil : D.perfis[0].id;
+  const ok = suportaExtras();
+  return `
+    <h2 class="it-titulo">Nova entrega</h2>
+    <p class="it-proj">Para o que surgir fora do planejamento. Aparece para toda a equipe.</p>
+    ${ok ? '' : `<div class="aviso aviso-exemplo" style="margin-top:14px">${ic('alerta')}<p><b>Falta um passo para liberar.</b> Atualize o código da planilha no Apps Script (passo a passo no README do app). Depois disso, as entregas novas aparecem para todo mundo.</p></div>`}
+    <form id="form-nova" class="form" autocomplete="off">
+      <label class="campo"><span>O que precisa ser feito?</span><input type="text" name="titulo" required maxlength="120" placeholder="Ex.: Carrossel com dicas para a prova"></label>
+      <label class="campo"><span>Faz parte de</span><select name="projeto">${projs.map(p => `<option value="${p.id}" ${p.id === sel ? 'selected' : ''}>${esc(p.nome)}</option>`).join('')}</select></label>
+      <div class="campos-2">
+        <label class="campo"><span>Perfil</span><select name="perfil">${D.perfis.map(x => `<option value="${x.id}" ${x.id === pf ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></label>
+        <label class="campo"><span>Quem faz</span><select name="resp">${D.equipe.map(x => `<option value="${x.id}" ${x.id === eu ? 'selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></label>
+      </div>
+      <div class="campos-2">
+        <label class="campo"><span>Tipo</span><select name="categoria">${D.categorias.map(c => `<option value="${c.id}" ${c.id === 'comercial' ? 'selected' : ''}>${esc(c.nome)}</option>`).join('')}</select></label>
+        <label class="campo"><span>Formato</span><input type="text" name="formato" list="lista-formatos" maxlength="30" placeholder="Carrossel, Reels…"></label>
+      </div>
+      <datalist id="lista-formatos">${['Carrossel', 'Criativo', 'Stories', 'Reels', 'Vídeo', 'Arte', 'Texto', 'Página', 'Roteiro', 'Live'].map(f => `<option value="${f}"></option>`).join('')}</datalist>
+      <div class="campos-2">
+        <label class="campo"><span>Pronto até</span><input type="date" name="prazo" required></label>
+        <label class="campo"><span>Publicar em (opcional)</span><input type="date" name="publicar"></label>
+      </div>
+      <label class="campo"><span>Horário de publicar (opcional)</span><input type="text" name="hora" maxlength="10" placeholder="Ex.: 17h"></label>
+      <label class="campo"><span>Passo a passo (um por linha, opcional)</span><textarea name="passos" rows="4" placeholder="Criar a arte&#10;Revisão do Yuri&#10;Subir no Drive"></textarea></label>
+      <label class="campo"><span>Detalhes (opcional)</span><textarea name="descricao" rows="2"></textarea></label>
+      <button type="submit" class="btn btn-pri btn-grande" ${ok ? '' : 'disabled'}>${ic('check')} Criar entrega</button>
+    </form>`;
 }
 
 function folhaMenu() {
@@ -1141,14 +1286,14 @@ function passosTour() {
   const nome = PESSOA[eu] ? PESSOA[eu].nome : '';
   return [
     { aba: 'inicio', titulo: `Oi, ${nome}!`, texto: 'Este é o app de produção do marketing do Grupo Talks. Em 1 minuto você vê onde tocar em cada coisa.' },
-    { aba: 'inicio', alvo: '[data-tour="minhas"]', titulo: 'O que é seu', texto: 'Aqui aparecem as suas entregas do mês, da mais urgente para a menos urgente.' },
+    { aba: 'inicio', alvo: '[data-tour="minhas"]', titulo: 'O que é seu', texto: 'Aqui aparecem as suas entregas e as de outra pessoa que estão esperando um passo seu (“Sua vez”), da mais urgente para a menos urgente.' },
     { aba: 'inicio', alvo: '[data-tour="minhas"] .card', titulo: 'Toque para abrir', texto: 'Cada entrega tem o passo a passo, o prazo, o link do Drive e a etapa em que está. Toque nela para abrir e marcar o que já fez.' },
     { aba: 'inicio', alvo: '[data-tour="travando"]', titulo: 'O que está travando', texto: 'Se algo está parado, abra a entrega e toque no motivo em “Algo está travando?”. Aparece aqui para a equipe toda.' },
     { aba: 'quadro', alvo: '[data-tour="aba-quadro"]', titulo: 'Quadro', texto: 'Mostra todas as entregas do mês, separadas por etapa. O que é seu fica em destaque.' },
     { aba: 'quadro', alvo: '[data-tour="colunas"]', titulo: 'Uma coluna para cada etapa', texto: 'A fazer → Em produção → Em aprovação → Pronto → Programado (já agendado para sair).' + (TOQUE ? ' Deslize para o lado para ver as outras.' : '') },
     { aba: 'quadro', alvo: '[data-tour="card-quadro"]', titulo: 'Arraste para mudar a etapa', texto: TOQUE ? 'Segure o card por meio segundo e arraste. Embaixo aparecem as etapas: solte na certa.' : 'Clique, segure e arraste o card até a coluna da etapa certa.' },
     { aba: 'quadro', alvo: '[data-status-col="pronto"]', titulo: 'Ficou pronto? Link do Drive', texto: 'Quando uma entrega vai para Pronto, o app pede o link do Drive onde está o arquivo. Assim todo mundo encontra.' },
-    { aba: 'quadro', alvo: '[data-tour="filtros"]', titulo: 'Perfis e pessoas', texto: 'Vermelho é Emergency Talks, azul é Ped Talks e verde é Intensive Talks. Dá para ver só um perfil ou só o que é de uma pessoa.' },
+    { aba: 'quadro', alvo: '[data-tour="filtros"]', titulo: 'Perfis e pessoas', texto: 'Vermelho é Emergency Talks, azul é Ped Talks, verde é Intensive Talks e branco é Grupo Talks. Dá para ver só um perfil ou só o que é de uma pessoa.' },
     { aba: 'lancamentos', alvo: '[data-tour="aba-lancamentos"]', titulo: 'Lançamentos', texto: 'O passo a passo completo de cada lançamento, quem faz o quê e quanto falta.' },
     { aba: 'agenda', alvo: '[data-tour="aba-agenda"]', titulo: 'Agenda', texto: 'Os prazos de cada dia e o que precisa ser programado para sair nas redes.' },
     { aba: 'inicio', alvo: '[data-tour="perfil"]', titulo: 'Seu perfil e ajuda', texto: 'Toque aqui para trocar de pessoa ou ver este tutorial de novo. O botão “?” também abre o tutorial.' },
@@ -1304,6 +1449,16 @@ function acao(nome, el, e) {
       fecharModal(); salvarLink(id, val); break;
     }
     case 'toast': { const fn = acoesToast[v]; if (fn) fn(); const t = el.closest('.toast'); if (t) t.remove(); break; }
+    case 'nova': if (podeAdicionar()) abrirFolha({ tipo: 'nova', projeto: id || ui.projeto || '' }); break;
+    case 'apagar-extra': {
+      const it = ITEM[id], d = estado[id] && estado[id].def;
+      if (!it || !d) break;
+      if (!window.confirm(`Apagar “${it.titulo}”? Ela some do app para toda a equipe.`)) break;
+      fecharFolha();
+      mudar(id, { def: Object.assign({}, d, { apagado: true }) }, 'apagou a entrega');
+      toast('Entrega apagada.');
+      break;
+    }
     default: break;
   }
 }
@@ -1330,7 +1485,34 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'campo-motivo') { e.preventDefault(); const b = $('.trava-sec .btn-trava'); if (b) acao('travar', b, e); }
 });
 
+document.addEventListener('submit', e => {
+  if (!e.target || e.target.id !== 'form-nova') return;
+  e.preventDefault();
+  if (!podeAdicionar()) return;
+  if (!suportaExtras()) { toast('Falta atualizar o código da planilha para liberar entregas novas.'); return; }
+  const f = new FormData(e.target);
+  const v = k => String(f.get(k) || '').trim();
+  const def = {
+    titulo: v('titulo'), projeto: v('projeto'), perfil: v('perfil'), resp: v('resp'), categoria: v('categoria'),
+    formato: v('formato'), prazo: v('prazo'), publicar: v('publicar'), hora: v('hora'), descricao: v('descricao'),
+    passos: v('passos').split(/\r?\n/).map(s => s.trim()).filter(Boolean).slice(0, 15),
+    fase: 'Entregas novas', criadoPor: eu,
+  };
+  if (!def.titulo || !BASE_PROJ[def.projeto] || !def.prazo) { toast('Preencha o que precisa ser feito, o projeto e o prazo.'); return; }
+  const id = 'extra.' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  estado[id] = normalizar({ def });
+  montarItens();
+  fecharFolha();
+  mudar(id, { def, status: 'afazer' }, 'criou a entrega');
+  toast(`Entrega criada: <b>${esc(def.titulo)}</b>`);
+});
+
 document.addEventListener('change', e => {
+  if (e.target.name === 'projeto' && e.target.form && e.target.form.id === 'form-nova') {
+    const p = BASE_PROJ[e.target.value];
+    if (p) e.target.form.elements.perfil.value = p.perfil;
+    return;
+  }
   const c = e.target.dataset && e.target.dataset.campo;
   if (!c) return;
   if (c === 'destacar') { ui.destacar = e.target.checked; LS.set('destacar', ui.destacar); render(); }

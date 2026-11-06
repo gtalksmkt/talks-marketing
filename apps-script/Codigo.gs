@@ -1,22 +1,26 @@
 /** @OnlyCurrentDoc */
 /**
- * TALKS MARKETING · sincronização da equipe
+ * TALKS MARKETING · sincronização da equipe (versão 2)
  * ---------------------------------------------------------------
  * Cole este código em uma planilha Google:
  *   Extensões > Apps Script > apague o que tiver > cole > salvar.
- * Depois: Implantar > Nova implantação > tipo "App da Web"
+ * Primeira vez: Implantar > Nova implantação > tipo "App da Web"
  *   Executar como: Eu  ·  Quem pode acessar: Qualquer pessoa
- * Copie o link que termina em /exec e coloque em config.js (ENDPOINT).
+ *   Copie o link que termina em /exec e coloque em config.js (ENDPOINT).
+ * Atualizando (mesmo link): Implantar > Gerenciar implantações > lápis >
+ *   Versão: Nova versão > Implantar.
  *
- * A planilha guarda só o andamento (etapa, link do Drive, passos,
- * travas, observações). O que precisa ser produzido fica no dados.js.
+ * A planilha guarda o andamento (etapa, link do Drive, passos, travas,
+ * observações) e as entregas novas criadas pelo app (coluna "def").
+ * O planejamento do mês fica no dados.js.
  */
 
+var VERSAO = 2;
 var ABA_STATUS = 'Status';
 var ABA_HIST = 'Histórico';
-var COLS = ['id', 'status', 'link', 'travado', 'motivo', 'passos', 'nota', 'por', 'atualizado'];
+var COLS = ['id', 'status', 'link', 'travado', 'motivo', 'passos', 'nota', 'por', 'atualizado', 'def'];
 var COLS_HIST = ['quando', 'quem', 'id', 'entrega', 'o que mudou'];
-var CAMPOS = ['status', 'link', 'travado', 'motivo', 'passos', 'nota'];
+var CAMPOS = ['status', 'link', 'travado', 'motivo', 'passos', 'nota', 'def'];
 var LIMITE_HIST = 60;
 
 function doGet() {
@@ -41,12 +45,13 @@ function doPost(e) {
       if (!m || !m.id) return;
       var id = String(m.id).slice(0, 200);
       var linha = linhaDe[id];
-      var atual = linha ? aba.getRange(linha, 1, 1, COLS.length).getValues()[0] : [id, 'afazer', '', false, '', '[]', '', '', ''];
+      var atual = linha ? aba.getRange(linha, 1, 1, COLS.length).getValues()[0] : [id, 'afazer', '', false, '', '[]', '', '', '', ''];
       var campos = m.campos || {};
       CAMPOS.forEach(function (c) {
         if (!(c in campos)) return;
         var v = campos[c];
         if (c === 'passos') v = JSON.stringify(Array.isArray(v) ? v : []);
+        else if (c === 'def') v = v ? JSON.stringify(v).slice(0, 5000) : '';
         else if (c === 'travado') v = v === true;
         else v = String(v == null ? '' : v).slice(0, 2000);
         atual[COLS.indexOf(c)] = v;
@@ -78,6 +83,8 @@ function estado_() {
     COLS.forEach(function (c, j) { o[c] = l[j]; });
     var passos = [];
     try { passos = JSON.parse(o.passos || '[]'); } catch (err) { passos = []; }
+    var def = null;
+    try { def = o.def ? JSON.parse(o.def) : null; } catch (err) { def = null; }
     itens[String(o.id)] = {
       status: String(o.status || 'afazer'),
       link: String(o.link || ''),
@@ -87,6 +94,7 @@ function estado_() {
       nota: String(o.nota || ''),
       por: String(o.por || ''),
       atualizado: ehData_(o.atualizado) ? o.atualizado.toISOString() : String(o.atualizado || ''),
+      def: def,
     };
   }
   var hist = aba_(ABA_HIST, COLS_HIST);
@@ -103,7 +111,7 @@ function estado_() {
       });
     }
   }
-  return { ok: true, itens: itens, historico: historico, agora: new Date().toISOString() };
+  return { ok: true, versao: VERSAO, itens: itens, historico: historico, agora: new Date().toISOString() };
 }
 
 function aba_(nome, cabecalho) {
@@ -114,6 +122,12 @@ function aba_(nome, cabecalho) {
     aba.appendRow(cabecalho);
     aba.setFrozenRows(1);
     aba.getRange(1, 1, 1, cabecalho.length).setFontWeight('bold');
+    return aba;
+  }
+  // planilha antiga: acrescenta as colunas novas no cabeçalho
+  var atual = aba.getRange(1, 1, 1, cabecalho.length).getValues()[0];
+  if (atual.join('|') !== cabecalho.join('|')) {
+    aba.getRange(1, 1, 1, cabecalho.length).setValues([cabecalho]).setFontWeight('bold');
   }
   return aba;
 }
