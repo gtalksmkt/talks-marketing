@@ -257,7 +257,8 @@ const atrasado = it => !feito(it.id) && !!it.prazo && diasAte(it.prazo) < 0;
 // quem programa a publicação quando fica pronta (conteúdo → Thiago; o resto → Manu; ver dados.js)
 function publicaDe(it) {
   if (Object.prototype.hasOwnProperty.call(it, 'publica')) return PESSOA[it.publica] ? it.publica : null;
-  if (!it.publicar || it.categoria === 'trafego' || ['Página', 'Live'].includes(it.formato)) return null;
+  // peças de tráfego também saem primeiro no orgânico (depois o Igor decide se viram anúncio)
+  if (!it.publicar || ['Página', 'Live'].includes(it.formato)) return null;
   const regra = D.publicacao || {};
   const p = it.categoria === 'conteudo' ? regra.conteudo : regra.outros;
   return PESSOA[p] ? p : null;
@@ -290,9 +291,10 @@ const pendenteParaMim = it => {
   const p = proximoPasso(it);
   return p ? p.r === eu || !p.r : publicaDe(it) === eu;
 };
-// posts que aparecem no calendário da Semana (tráfego, páginas, roteiros etc. não entram)
+// posts que aparecem no calendário da Semana (páginas, roteiros, lives etc. não entram;
+// peças de tráfego entram porque saem primeiro no orgânico)
 const FORMATOS_POST = ['Carrossel', 'Criativo', 'Stories', 'Reels', 'Vídeo'];
-const ehPost = it => it.categoria !== 'trafego' && FORMATOS_POST.includes(it.formato);
+const ehPost = it => FORMATOS_POST.includes(it.formato);
 // plano do dia (dados.js → planos)
 const planoDe = (pid, dia) => { const p = (D.planos || {})[dia || hojeISO()]; return p && Array.isArray(p[pid]) ? p[pid] : null; };
 const itensDeHoje = () => new Set(Object.values((D.planos || {})[hojeISO()] || {}).flat().map(b => b.item).filter(id => ITEM[id]));
@@ -602,6 +604,20 @@ function heroMarcos() {
 const minutos = h => { const [a, b] = String(h).split(':').map(Number); return a * 60 + (b || 0); };
 const fmtHora = h => { const [a, b] = String(h).split(':'); return Number(a) + 'h' + (b && b !== '00' ? b : ''); };
 
+// copies e tópicos que a pessoa ainda precisa entregar para o que está no plano de hoje
+function faltamCopies(pid) {
+  return [...itensDeHoje()].map(id => ITEM[id]).filter(Boolean).map(it => {
+    const s = st(it.id);
+    const ps = it.passos.filter((p, i) => p.r === pid && !s.passos.includes(i) && /^(copy|tópicos)/i.test(p.t));
+    return ps.length ? { it, ps } : null;
+  }).filter(Boolean);
+}
+function listaCopies(pid) {
+  const lst = faltamCopies(pid);
+  if (!lst.length) return `<p class="dica">Todas as copies de hoje já estão prontas.</p>`;
+  return `<div class="lista-mini">${lst.map(o => linhaMini(o.it, `${esc(o.ps.map(p => p.t).join(', '))} · para ${esc(PESSOA[o.it.resp] ? PESSOA[o.it.resp].nome : '')}`)).join('')}</div>`;
+}
+
 // blocos de horário do plano do dia
 function blocosHTML(blocos, o = {}) {
   const agora = new Date(), min = agora.getHours() * 60 + agora.getMinutes();
@@ -618,6 +634,7 @@ function blocosHTML(blocos, o = {}) {
       <div class="bl-corpo">
         ${o.compacto && it ? `<button class="bl-faz" data-acao="abrir" data-id="${it.id}">${faz}</button>` : `<p class="bl-faz">${faz}${atual ? ' <span class="tag-agora">agora</span>' : ''}</p>`}
         ${it && !o.compacto ? (primeiro ? cardHTML(it, { status: true }) : `<button class="bl-ver" data-acao="abrir" data-id="${it.id}">Continuar: abrir a entrega ${ic('seta')}</button>`) : ''}
+        ${b.lista === 'copies' && !o.compacto ? listaCopies(o.pid) : ''}
       </div>
     </li>`;
   }).join('')}</ol>`;
@@ -657,7 +674,7 @@ function telaInicio() {
       <div class="col-principal">
         <section class="secao" data-tour="minhas">
           <div class="secao-cab"><h2>Seu dia</h2>${exp ? `<span class="expediente">${ic('relogio')} Expediente: ${esc(exp)}</span>` : ''}</div>
-          ${plano ? blocosHTML(plano)
+          ${plano ? blocosHTML(plano, { pid: eu })
             : `<div class="vazio">${ic('agenda')}<p><b>Nada marcado com horário para você hoje.</b><br>${destravar.length ? 'Veja abaixo o que a equipe precisa de você.' : 'Quando estiver livre, pegue algo do backlog.'}</p></div>`}
           <button class="btn btn-sec btn-backlog" data-acao="ver-meus">${ic('quadro')} Quando estiver livre: ver o backlog${noBacklog ? ` (${noBacklog} com você)` : ''}</button>
         </section>
@@ -672,7 +689,7 @@ function telaInicio() {
           <div class="secao-cab"><h2>O dia da equipe</h2></div>
           <div class="dia-equipe">${equipe.map(p => `<div class="de-pessoa">
             <div class="de-cab">${avatar(p.id)}<b>${esc(p.nome)}</b>${(D.expediente || {})[p.id] ? `<small>${esc(D.expediente[p.id])}</small>` : ''}</div>
-            ${blocosHTML(planoDe(p.id), { compacto: true })}
+            ${blocosHTML(planoDe(p.id), { compacto: true, pid: p.id })}
           </div>`).join('')}</div>
         </section>` : ''}
         ${D.marcos ? heroMarcos() : heroLancamentos()}
@@ -882,8 +899,8 @@ function telaSemana() {
   const ok = suportaCal();
   const posts = ITENS.filter(ehPost);
   const daSemana = posts.filter(it => it.publicar && it.publicar >= seg && it.publicar <= fds[1]);
-  // sem dia = posts que tinham dia e foram tirados do calendário (ou entregas novas com cara de post)
-  const semDia = posts.filter(it => !it.publicar && doMes(it) && (it.publicarBase || it.extra));
+  // sem dia = posts ainda sem data de publicação (ou tirados do calendário)
+  const semDia = posts.filter(it => !it.publicar && doMes(it) && st(it.id).status !== 'programado').sort(ordenar);
   const ini = lerData(seg), sex = lerData(dias[4]);
   const titulo = `${ini.getDate()}${ini.getMonth() !== sex.getMonth() ? ' de ' + MESES[ini.getMonth()] : ''} a ${sex.getDate()} de ${MESES[sex.getMonth()]}`;
   const perfis = D.perfis;
@@ -1456,26 +1473,44 @@ function fluxoInicial() {
   if (MOBILE && !STANDALONE && !LS.get('instalacaoVista', false)) return mostrarIntro('instalar');
   if (!eu) return mostrarIntro('quem');
   fecharIntro();
-  if (!LS.get('tutorialVisto', false)) setTimeout(iniciarTour, 350);
+  if (precisaTutorial()) setTimeout(iniciarTour, 350);
 }
 
 /* ============================= tutorial ============================= */
+// subir a versão faz o tutorial aparecer de novo para todo mundo (uma vez)
+const TOUR_VERSAO = 2;
+const precisaTutorial = () => LS.get('tutorialVersao', 0) < TOUR_VERSAO;
 let tour = null;
+// entrega usada para mostrar o que tem dentro (de preferência uma de hoje da pessoa)
+function entregaDoTour() {
+  const ok = it => it && !feito(it.id) && !st(it.id).travado && it.passos.length;
+  const hoje = [...itensDeHoje()].map(id => ITEM[id]).filter(ok);
+  const it = hoje.find(i => i.resp === eu) || hoje[0]
+    || ITENS.find(i => ok(i) && doMes(i) && i.resp === eu) || ITENS.find(ok);
+  return it ? it.id : null;
+}
 function passosTour() {
   const nome = PESSOA[eu] ? PESSOA[eu].nome : '';
+  const jaUsou = LS.get('tutorialVersao', 0) > 0 || LS.get('tutorialVisto', false);
   return [
-    { aba: 'inicio', titulo: `Oi, ${nome}!`, texto: 'Este é o app de produção do marketing do Grupo Talks. Em 1 minuto você vê onde tocar em cada coisa.' },
-    { aba: 'inicio', alvo: '[data-tour="minhas"]', titulo: 'Seu dia', texto: 'Aqui fica o que você faz hoje, com horário. O resto do mês fica no Backlog, para pegar quando estiver livre.' },
-    { aba: 'inicio', alvo: '[data-tour="minhas"] .card, [data-tour="minhas"] .vazio', titulo: 'Toque para abrir', texto: 'Cada entrega tem o passo a passo, o prazo, o link do Drive e a etapa em que está. Toque nela para abrir e marcar o que já fez.' },
-    { aba: 'inicio', alvo: '[data-tour="travando"]', titulo: 'O que está travando', texto: 'Se algo está parado, abra a entrega e toque no motivo em “Algo está travando?”. Aparece aqui para a equipe toda.' },
-    { aba: 'semana', alvo: '[data-tour="aba-semana"]', titulo: 'Semana', texto: 'O calendário de posts da semana, de segunda a sexta, separado por perfil.' },
-    { aba: 'semana', alvo: '[data-tour="calendario"]', titulo: 'Arraste os posts', texto: (TOQUE ? 'Segure um post e arraste' : 'Arraste um post') + ' para outro dia ou perfil para organizar a semana. A cor mostra a etapa: cinza a fazer, amarelo em produção, lilás em aprovação, verde-água pronto e branco programado.' },
+    { aba: 'inicio', titulo: jaUsou ? `O app mudou, ${nome}!` : `Oi, ${nome}!`,
+      texto: jaUsou ? 'Agora tem Hoje (seu dia com horário), Semana (calendário de posts) e Backlog (o resto do mês). Em 2 minutos você vê como mexer em cada coisa.'
+        : 'Este é o app de produção do marketing do Grupo Talks. Em 2 minutos você vê como mexer em cada coisa.' },
+    { aba: 'inicio', alvo: '[data-tour="minhas"]', titulo: 'Hoje: seu dia', texto: 'O que você faz hoje, com horário. O bloco que está acontecendo agora fica marcado em vermelho. O resto do mês fica no Backlog.' },
+    { aba: 'inicio', alvo: '[data-tour="minhas"] .card-prox, [data-tour="minhas"] .lista-mini, [data-tour="minhas"] .vazio', titulo: 'Sua vez ou esperando', texto: 'Cada entrega mostra o próximo passo. “Sua vez” é quando é com você. “Esperando Yuri: Copy da arte” é quando depende de outra pessoa, e dá para cobrar.' },
+    { folha: true, alvo: '.folha .st-opcoes', titulo: 'Dentro da entrega: a etapa', texto: 'Tocando numa entrega, ela abre assim. Aqui você muda a etapa: A fazer, Em produção, Em aprovação, Pronto ou Programado.' },
+    { folha: true, alvo: '.folha .passos', titulo: 'Passo a passo', texto: 'Marque cada passo quando fizer. Passo com a foto de outra pessoa é dela (por exemplo, a copy e a legenda do Yuri).' },
+    { folha: true, alvo: '.folha #campo-link', titulo: 'Link do Drive', texto: 'Quando ficar pronto, cole aqui o link do arquivo final. Ao mudar a etapa para Pronto, o app também pede o link.' },
+    { folha: true, alvo: '.folha .trava-sec', titulo: 'Algo travou?', texto: 'Se alguma coisa está parada (esperando professor, aprovação, arquivo…), toque no motivo. A equipe toda vê na tela Hoje.' },
+    { aba: 'inicio', alvo: '[data-tour="travando"]', titulo: 'O que está travando', texto: 'Aqui aparece o que está travado ou atrasado. Logo abaixo, o que já está pronto e falta programar.' },
+    { aba: 'semana', alvo: '[data-tour="aba-semana"]', titulo: 'Semana', texto: 'O calendário de posts da semana, de segunda a sexta (e o fim de semana), com uma linha para cada perfil.' },
+    { aba: 'semana', alvo: '[data-tour="calendario"]', titulo: 'Arraste os posts', texto: (TOQUE ? 'Segure um post e arraste' : 'Arraste um post') + ' para outro dia ou perfil. A cor mostra a etapa: cinza a fazer, amarelo em produção, lilás em aprovação, verde-água pronto e branco programado.' },
+    { aba: 'semana', alvo: '.bandeja', titulo: 'Posts sem dia', texto: 'O que ainda não tem dia para sair fica aqui. Depois de aprovado, arraste para o dia certo: tudo sai primeiro no orgânico, e depois o Igor decide o que vai para o tráfego.' },
     { aba: 'quadro', alvo: '[data-tour="aba-quadro"]', titulo: 'Backlog', texto: 'Tudo o que ainda precisa ser feito no mês, separado por etapa. Quando estiver livre, pegue algo daqui.' },
-    { aba: 'quadro', alvo: '[data-tour="card-quadro"]', titulo: 'Arraste para mudar a etapa', texto: 'A fazer → Em produção → Em aprovação → Pronto → Programado. ' + (TOQUE ? 'Segure o card por meio segundo e arraste: embaixo aparecem as etapas.' : 'Clique, segure e arraste o card até a coluna certa.') },
-    { aba: 'quadro', alvo: '[data-status-col="pronto"]', titulo: 'Ficou pronto? Link do Drive', texto: 'Quando uma entrega vai para Pronto, o app pede o link do Drive onde está o arquivo. Assim todo mundo encontra.' },
-    { aba: 'quadro', alvo: '[data-tour="filtros"]', titulo: 'Perfis e pessoas', texto: 'Vermelho é Emergency Talks, azul é Ped Talks, verde é Intensive Talks e branco é Grupo Talks. Dá para ver só um perfil ou só o que é de uma pessoa.' },
-    { aba: 'lancamentos', alvo: '[data-tour="aba-lancamentos"]', titulo: 'Lançamentos', texto: 'O passo a passo completo de cada lançamento, quem faz o quê e quanto falta.' },
-    { aba: 'inicio', alvo: '[data-tour="perfil"]', titulo: 'Seu perfil e ajuda', texto: 'Toque aqui para ver quem faz o quê na equipe, trocar de pessoa ou ver este tutorial de novo. O botão “?” também abre o tutorial.' },
+    { aba: 'quadro', alvo: '[data-tour="card-quadro"]', titulo: 'Arraste para mudar a etapa', texto: (TOQUE ? 'Segure o card por meio segundo e arraste: embaixo aparecem as etapas para soltar.' : 'Clique, segure e arraste o card até a coluna da etapa certa.') + ' O que está no plano de hoje tem a etiqueta “Hoje”.' },
+    { aba: 'quadro', alvo: '[data-tour="filtros"]', titulo: 'Perfis e pessoas', texto: 'Vermelho é Emergency Talks, azul é Ped Talks, verde é Intensive Talks e branco é Grupo Talks. Dá para ver só um perfil ou só o que é seu.' },
+    { aba: 'lancamentos', alvo: '[data-tour="aba-lancamentos"]', titulo: 'Lançamentos', texto: 'A linha do tempo do mês e o passo a passo completo de cada lançamento.' },
+    { aba: 'inicio', alvo: '[data-tour="perfil"]', titulo: 'Seu perfil e ajuda', texto: 'Toque na sua foto para ver quem faz o quê na equipe ou trocar de pessoa. O botão “?” abre este tutorial de novo quando quiser.' },
   ];
 }
 function acharVisivel(sel) {
@@ -1497,21 +1532,36 @@ function iniciarTour() {
 }
 function mostrarPassoTour() {
   const p = tour.passos[tour.i];
-  const mudouAba = p.aba && ui.aba !== p.aba;
-  if (p.aba === 'lancamentos') ui.projeto = null;
-  if (mudouAba || p.aba === 'lancamentos') irAba(p.aba);
-  if (mudouAba) window.scrollTo(0, 0);
+  let espera = 0;
+  if (p.folha) {
+    // passos de dentro da entrega: abre uma entrega de exemplo
+    if (!folha || folha.tipo !== 'item') {
+      const id = entregaDoTour();
+      if (ui.aba !== 'inicio') irAba('inicio');
+      if (id) { abrirFolha({ tipo: 'item', id }); espera = 380; }
+    }
+  } else {
+    if (folha) esconderFolha();
+    const mudouAba = p.aba && ui.aba !== p.aba;
+    if (p.aba === 'lancamentos') ui.projeto = null;
+    if (mudouAba || p.aba === 'lancamentos') irAba(p.aba);
+    if (mudouAba) window.scrollTo(0, 0);
+  }
   const raiz = $('#tour-raiz');
   $('.tb-n', raiz).textContent = (tour.i + 1) + ' de ' + tour.passos.length;
   $('.tb-tit', raiz).textContent = p.titulo;
   $('.tb-txt', raiz).textContent = p.texto;
   $('[data-acao="tour-voltar"]', raiz).style.visibility = tour.i ? 'visible' : 'hidden';
   $('[data-acao="tour-prox"]', raiz).textContent = tour.i === tour.passos.length - 1 ? 'Começar a usar' : 'Próximo';
-  const el = p.alvo ? acharVisivel(p.alvo) : null;
-  if (el) rolarAte(el); else window.scrollTo(0, 0);
-  requestAnimationFrame(() => requestAnimationFrame(() => posicionarTour(true)));
+  setTimeout(() => {
+    if (!tour) return;
+    const el = p.alvo ? acharVisivel(p.alvo) : null;
+    if (el) rolarAte(el); else if (!p.folha) window.scrollTo(0, 0);
+    requestAnimationFrame(() => requestAnimationFrame(() => posicionarTour(true)));
+  }, espera);
 }
 function rolarAte(el) {
+  if (el.closest('.folha')) { el.scrollIntoView({ block: 'center' }); return; }
   const rol = el.closest('.quadro-rolagem');
   if (rol && rol.scrollWidth > rol.clientWidth) {
     const col = el.classList.contains('quadro-rolagem') ? null : (el.closest('.coluna') || el);
@@ -1561,7 +1611,8 @@ function posicionarTour() {
 }
 function fimTour() {
   tour = null;
-  LS.set('tutorialVisto', true);
+  LS.set('tutorialVisto', true); LS.set('tutorialVersao', TOUR_VERSAO);
+  if (folha) esconderFolha();
   $('#tour-raiz').innerHTML = '';
   document.body.classList.remove('em-tour');
   irAba('inicio');
@@ -1609,7 +1660,7 @@ function acao(nome, el, e) {
       const trocou = eu !== v;
       eu = v; LS.set('pessoa', v); ui.pessoa = 'todos';
       fecharIntro(); render();
-      if (!LS.get('tutorialVisto', false)) setTimeout(iniciarTour, 300);
+      if (precisaTutorial()) setTimeout(iniciarTour, 300);
       else if (trocou) toast(`Agora você está como <b>${esc(PESSOA[v].nome)}</b>.`);
       break;
     }
@@ -1617,7 +1668,7 @@ function acao(nome, el, e) {
     case 'instalar': if (folha) esconderFolha(); mostrarIntro('instalar'); break;
     case 'plataforma': ui.plataforma = v; renderIntro(); break;
     case 'ja-instalei': LS.set('instalacaoVista', true); mostrarIntro('abrir-icone'); break;
-    case 'pular-instalar': LS.set('instalacaoVista', true); if (!eu) mostrarIntro('quem'); else { fecharIntro(); if (!LS.get('tutorialVisto', false)) setTimeout(iniciarTour, 300); } break;
+    case 'pular-instalar': LS.set('instalacaoVista', true); if (!eu) mostrarIntro('quem'); else { fecharIntro(); if (precisaTutorial()) setTimeout(iniciarTour, 300); } break;
     case 'instalar-agora':
       if (promptInstalar) { promptInstalar.prompt(); promptInstalar.userChoice.finally(() => { promptInstalar = null; if (ui.intro) renderIntro(); if (folha) renderFolha(true); }); }
       else toast('Use o menu do navegador para instalar.');
@@ -1707,7 +1758,7 @@ window.addEventListener('popstate', () => { if (folha) esconderFolha(); });
 window.addEventListener('hashchange', () => { const a = location.hash.slice(1); if (ABAS.includes(a) && a !== ui.aba) irAba(a); });
 window.addEventListener('resize', () => { if (tour) posicionarTour(); marcarColunaVisivel(); });
 window.addEventListener('scroll', () => { if (tour) posicionarTour(); }, { passive: true });
-document.addEventListener('scroll', e => { if (e.target.classList && e.target.classList.contains('quadro-rolagem')) { marcarColunaVisivel(); if (tour) posicionarTour(); } }, true);
+document.addEventListener('scroll', e => { if (e.target.classList && e.target.classList.contains('quadro-rolagem')) marcarColunaVisivel(); if (tour && e.target !== document) posicionarTour(); }, true);
 
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();

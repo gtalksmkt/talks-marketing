@@ -42,6 +42,8 @@ No app, cada arte do Thiago segue: copy (Yuri) → arte (Thiago) → revisão (Y
 ## Planejamento do mês (`dados.js`)
 
 - `planos`: o plano do dia, por data e por pessoa: `{ das: '08:00', ate: '11:00', item: 'projeto.chave', faz: 'o que fazer' }` (`pausa: true` para intervalo). O que não está no plano fica no Backlog. `expediente` guarda o horário de cada um.
+- Regra da equipe: depois de aprovado, tudo sai primeiro no orgânico; depois o Yuri e o Igor (tráfego) decidem o que vira anúncio. Por isso as peças "para tráfego" também entram no calendário da Semana (as que ainda não têm dia ficam em "Posts sem dia").
+- Tutorial: ao mudar bastante o app, suba `TOUR_VERSAO` no `app.js` para o tutorial aparecer de novo para todo mundo (uma vez).
 - `marcos`: a linha do tempo que aparece no topo (data, `ate` opcional, `hora` opcional, título, perfil).
 - `projetos`: cada lançamento ou frente de conteúdo, com `projeto({ id, mes, perfil, tipo, nome, data, resumo, itens })`.
 - Cada entrega: `chave`, `titulo`, `resp`, `formato`, `categoria` (`conteudo` | `comercial` | `trafego`), `prazo` (pronto até), `publicar` e `hora` (opcionais), `depende` (chaves que precisam ficar prontas antes), `passos` (um passo de outra pessoa: `{ t: 'Revisão do Yuri', r: 'yuri' }`) e `inicial` (etapa de partida, por exemplo `'pronto'` ou `{ status: 'producao', travado: true, motivo: '...' }`).

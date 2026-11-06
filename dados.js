@@ -55,7 +55,8 @@ function projeto(o) { return { tipo: 'conteudo', ...o, itens: o.itens || [] }; }
 const COPY = { t: 'Copy da arte', r: 'yuri' };
 const REVISAO = { t: 'Revisão do Yuri', r: 'yuri' };
 const LEGENDA = { t: 'Legenda', r: 'yuri' };
-const TRAFEGO_ENVIAR = { t: 'Enviar para quem cuida do tráfego', r: 'yuri' };
+// regra: depois de aprovado, sai primeiro no orgânico; depois decide com o Igor (tráfego) se vira anúncio
+const TRAFEGO_ENVIAR = { t: 'Depois do orgânico: decidir com o Igor se vai para o tráfego', r: 'yuri' };
 // artes do Thiago: copy do Yuri → arte → revisão → Drive → legenda do Yuri
 const PASSOS_ESTATICO = [COPY, 'Criar a arte (feed e stories)', REVISAO, 'Exportar e subir no Drive', LEGENDA];
 const PASSOS_STORIES = [COPY, 'Criar os stories', REVISAO, 'Exportar e subir no Drive'];
@@ -94,7 +95,7 @@ window.TM_DADOS = {
   processo: [
     { quem: 'thiago', faz: ['Faz as artes de tudo, menos as do Atualiza Talks', 'Conteúdo do Emergency e do Intensive: recebe do professor (com a legenda), faz o carrossel e publica', 'Arte sem copy? Cobra o Yuri'] },
     { quem: 'manu',   faz: ['Edita os vídeos: pede o roteiro ao Yuri e o vídeo ao professor', 'Publica os posts e vídeos que não são de conteúdo, quando ficam prontos'] },
-    { quem: 'yuri',   faz: ['Define o cronograma', 'Escreve a copy das artes e os roteiros dos vídeos', 'Escreve as legendas (as de conteúdo vêm do professor)', 'Revisa, cuida das páginas e faz todas as artes do Atualiza Talks'] },
+    { quem: 'yuri',   faz: ['Define o cronograma', 'Escreve a copy das artes e os roteiros dos vídeos', 'Escreve as legendas (as de conteúdo vêm do professor)', 'Revisa, cuida das páginas e faz todas as artes do Atualiza Talks', 'Depois que algo é aprovado, sai primeiro no orgânico; depois decide com o Igor (tráfego) o que vira anúncio'] },
   ],
 
   // expediente de cada um (aparece em "Seu dia")
@@ -107,15 +108,28 @@ window.TM_DADOS = {
     '2026-11-06': {
       thiago: [
         { das: '08:00', ate: '11:00', item: 'emergency-thais-nov26.carrossel-06', faz: 'Carrossel da Prof. Thaís que não saiu: fazer e publicar' },
-        { das: '11:00', ate: '12:00', item: 'emergency-thais-nov26.trafego-tema', faz: 'Criativo para tráfego com o tema da Thaís (começar)' },
+        { das: '11:00', ate: '12:00', item: 'teme-nov26.criativos', faz: 'Criativo para tráfego do Preparatório TEME (começar)' },
         { das: '12:00', ate: '13:00', pausa: true, faz: 'Intervalo' },
-        { das: '13:00', ate: '14:30', item: 'emergency-thais-nov26.trafego-tema', faz: 'Criativo para tráfego: terminar e mandar para o tráfego' },
-        { das: '14:30', ate: '17:00', item: 'tep-lanc-nov26.live-arte', faz: 'Criativo da live das meninas de Ped (18/11, 19h30)' },
+        { das: '13:00', ate: '14:00', item: 'teme-nov26.criativos', faz: 'Criativo para tráfego do Preparatório TEME: terminar e mandar para a revisão do Yuri' },
+        { das: '14:00', ate: '16:00', item: 'tep-lanc-nov26.live-arte', faz: 'Criativo divulgando a live das meninas de Ped (18/11, 19h30)' },
+        { das: '16:00', ate: '17:00', item: 'teme-nov26.criativo-premium', faz: 'Se der tempo: criativo para tráfego do TEME Premium' },
       ],
       manu: [
-        { das: '13:00', ate: '13:30', item: 'black-talks-nov26.aq-video-0611', faz: 'Programar o vídeo do aquecimento da Black (sai hoje)' },
-        { das: '13:30', ate: '15:15', item: 'atualiza-lanc-nov26.video-trafego', faz: 'Vídeo para tráfego: o que é o Atualiza Talks' },
-        { das: '15:15', ate: '17:00', item: 'black-talks-nov26.bk-video-trafego', faz: 'Vídeo para tráfego: Black Talks' },
+        { das: '13:00', ate: '13:30', item: 'black-talks-nov26.aq-video-0611', faz: 'Publicar o vídeo do aquecimento da Black (sai hoje)' },
+        { das: '13:30', ate: '15:15', item: 'black-talks-nov26.bk-video-trafego', faz: 'Vídeo para tráfego: Black Talks' },
+        { das: '15:15', ate: '17:00', item: 'tep-lanc-nov26.live-video-1', faz: 'Vídeo da live das meninas de Ped' },
+      ],
+      yuri: [
+        { das: '08:00', ate: '10:00', lista: 'copies', faz: 'Copies que ainda faltam (o Thiago e a Manu dependem delas hoje)' },
+        { das: '10:00', ate: '12:00', item: 'acoes-nov26.live-sorteio-0611', faz: 'Organizar a live de sorteio' },
+        { das: '12:00', ate: '13:00', item: 'acoes-nov26.live-sorteio-0611', faz: 'Live de sorteio, ao meio-dia' },
+        { das: '14:00', ate: '15:00', faz: 'Reunião com o Igor (tráfego): o que já saiu no orgânico e o que vira anúncio' },
+        { das: '15:00', ate: '17:00', item: 'atualiza-lanc-nov26.vem-ai', faz: 'Criar as postagens do Atualiza Talks' },
+      ],
+    },
+    '2026-11-09': {
+      manu: [
+        { das: '13:00', ate: '17:00', item: 'atualiza-lanc-nov26.video-trafego', faz: 'Vídeo para tráfego: o que é o Atualiza Talks (passou de sexta para hoje)' },
       ],
     },
   },
@@ -130,7 +144,7 @@ window.TM_DADOS = {
   categorias: [
     { id: 'conteudo',  nome: 'Conteúdo',  explica: 'Matéria que os professores trazem para as redes' },
     { id: 'comercial', nome: 'Comercial', explica: 'Marketing de vendas e lançamentos' },
-    { id: 'trafego',   nome: 'Tráfego',   explica: 'Peças para anúncios pagos' },
+    { id: 'trafego',   nome: 'Tráfego',   explica: 'Pensado para anúncio: sai primeiro no orgânico; depois o Igor decide se vira anúncio' },
   ],
 
   /* Linha do tempo que aparece no topo do app */
@@ -212,9 +226,9 @@ window.TM_DADOS = {
           passos: [{ t: 'Copy da arte: tema e título da live', r: 'yuri' }, 'Criar a arte (feed e stories)', REVISAO, 'Exportar e subir no Drive', LEGENDA] },
         { chave: 'live-trafego', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Criativo da live para tráfego', resp: 'thiago', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-12', publicar: '2026-11-13', depende: ['live-arte'],
           descricao: 'Para impulsionar a live de 13 a 18/11.', passos: PASSOS_TRAFEGO },
-        { chave: 'live-video-1', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Vídeo 1 da live: Rebecca e Natália convidando', resp: 'manu', formato: 'Reels', categoria: 'comercial', prazo: '2026-11-12', publicar: '2026-11-14', depende: ['live-roteiros'],
-          descricao: 'Também vai para o tráfego, para impulsionar a live.',
-          passos: ['Mandar o roteiro e pedir o vídeo à Rebecca e à Natália', 'Receber os vídeos', 'Editar com legenda na tela', REVISAO, 'Exportar 9:16 e subir no Drive', LEGENDA] },
+        { chave: 'live-video-1', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Vídeo da live: Rebecca e Natália convidando', resp: 'manu', formato: 'Reels', categoria: 'comercial', prazo: '2026-11-06', publicar: '2026-11-12',
+          descricao: 'Também vai para o tráfego, para impulsionar a live. Se ainda não tiver vídeo das duas, montar com fotos e a arte da live.',
+          passos: [{ t: 'Tópicos do vídeo: tema, data e horário da live', r: 'yuri' }, 'Pedir à Rebecca e à Natália um vídeo curto convidando (ou separar fotos delas)', 'Editar com legenda na tela', REVISAO, 'Exportar 9:16 e 4:5 e subir no Drive', LEGENDA] },
         { chave: 'live-amanha', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Criativo “é amanhã, às 19h30”', resp: 'thiago', formato: 'Stories', categoria: 'comercial', prazo: '2026-11-16', publicar: '2026-11-17', depende: ['live-arte'], passos: PASSOS_ESTATICO },
         { chave: 'live-video-2', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Vídeo 2 da live: “é hoje, às 19h30”', resp: 'manu', formato: 'Reels', categoria: 'comercial', prazo: '2026-11-16', publicar: '2026-11-18', hora: '12h', depende: ['live-roteiros'],
           passos: ['Pedir às duas um vídeo curto (ou usar trechos do vídeo 1)', 'Editar com legenda na tela', REVISAO, 'Exportar 9:16 e subir no Drive', LEGENDA] },
@@ -263,13 +277,13 @@ window.TM_DADOS = {
           descricao: 'Postar no Emergency e no Grupo Talks.', passos: PASSOS_ATUALIZA },
         { chave: 'video', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Vídeo de divulgação do Atualiza Talks', resp: 'manu', formato: 'Vídeo', categoria: 'comercial', prazo: '2026-11-20', publicar: '2026-11-25', depende: ['roteiros'],
           descricao: 'Vai na landing page e nos perfis do Emergency e do Grupo Talks.', passos: PASSOS_VIDEO },
-        { chave: 'video-trafego', fase: 'Pré-lançamento', titulo: 'Vídeo para tráfego: o que é o Atualiza Talks', resp: 'manu', formato: 'Vídeo', categoria: 'trafego', prazo: '2026-11-06',
+        { chave: 'video-trafego', fase: 'Pré-lançamento', titulo: 'Vídeo para tráfego: o que é o Atualiza Talks', resp: 'manu', formato: 'Vídeo', categoria: 'trafego', prazo: '2026-11-09',
           descricao: 'Ainda não temos um vídeo explicando o Atualiza Talks. Vai rodar no tráfego.',
           passos: [{ t: 'Tópicos do vídeo: o que é o Atualiza Talks e para quem é', r: 'yuri' }, 'Separar imagens e vídeos que já temos', 'Editar com legenda na tela', REVISAO, 'Exportar 9:16, 4:5 e 1:1', TRAFEGO_ENVIAR] },
         { chave: 'estaticos', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Estáticos de lançamento (Emergency e Grupo Talks)', resp: 'yuri', formato: 'Carrossel', categoria: 'comercial', prazo: '2026-11-23', publicar: '2026-11-25',
           passos: ['Copy dos cards', 'Diagramar o carrossel', 'Exportar e subir no Drive', 'Legenda'] },
         { chave: 'trafego', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Criativos do Atualiza Talks para tráfego', resp: 'yuri', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-23', publicar: '2026-11-25',
-          passos: ['Copy dos anúncios', 'Criar 3 variações (1:1, 4:5 e 9:16)', 'Subir no Drive', 'Enviar para quem cuida do tráfego'] },
+          passos: ['Copy dos anúncios', 'Criar 3 variações (1:1, 4:5 e 9:16)', 'Subir no Drive', 'Depois do orgânico: decidir com o Igor se vai para o tráfego'] },
         { chave: 'landing', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Landing page do Atualiza Talks no ar', resp: 'yuri', formato: 'Página', categoria: 'comercial', prazo: '2026-11-23', publicar: '2026-11-25', depende: ['video'],
           descricao: 'A página já existe: falta preço (R$ 9,90 no 1º mês na Black), checkout, professores e o vídeo.',
           passos: ['Preço e link do checkout', 'Professores', 'Colocar o vídeo', 'Testar no celular', 'Publicar'] },
@@ -292,9 +306,25 @@ window.TM_DADOS = {
           passos: ['Escrever o roteiro', 'Mandar para a Manu pedir o vídeo ao professor'] },
         { chave: 'carrossel-1', fase: 'TEME 2027', titulo: 'Carrossel TEME 2027: por que fazer com o Emergency', resp: 'thiago', formato: 'Carrossel', categoria: 'comercial', prazo: '2026-11-11', publicar: '2026-11-13', passos: PASSOS_CARROSSEL },
         { chave: 'video', fase: 'TEME 2027', titulo: 'Vídeo novo de divulgação do TEME 2027', resp: 'manu', formato: 'Vídeo', categoria: 'comercial', prazo: '2026-11-13', publicar: '2026-11-15', depende: ['roteiro'], passos: PASSOS_VIDEO },
-        { chave: 'criativos', fase: 'TEME 2027', titulo: 'Criativos novos do TEME 2027 para tráfego', resp: 'thiago', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-13', passos: PASSOS_TRAFEGO },
+        { chave: 'criativos', fase: 'TEME 2027', titulo: 'Criativo para tráfego: Preparatório TEME', resp: 'thiago', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-06',
+          descricao: 'Um criativo com o tema dos preparatórios do TEME.',
+          passos: [{ t: 'Copy do anúncio', r: 'yuri' }, 'Criar o criativo (1:1 e 9:16)', REVISAO, 'Subir no Drive', TRAFEGO_ENVIAR] },
+        { chave: 'criativo-premium', fase: 'TEME 2027', titulo: 'Criativo para tráfego: TEME Premium', resp: 'thiago', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-09',
+          descricao: 'Se der tempo na sexta (06/11). Se não, fica para segunda.',
+          passos: [{ t: 'Copy do anúncio', r: 'yuri' }, 'Criar o criativo (1:1 e 9:16)', REVISAO, 'Subir no Drive', TRAFEGO_ENVIAR] },
         { chave: 'video-trafego', fase: 'TEME 2027', titulo: 'Corte do vídeo do TEME 2027 para tráfego', resp: 'manu', formato: 'Vídeo', categoria: 'trafego', prazo: '2026-11-16', depende: ['video'], passos: PASSOS_VIDEO_TRAFEGO },
         { chave: 'carrossel-2', fase: 'TEME 2027', titulo: 'Carrossel TEME 2027: o que está incluso', resp: 'thiago', formato: 'Carrossel', categoria: 'comercial', prazo: '2026-11-19', publicar: '2026-11-22', passos: PASSOS_CARROSSEL },
+      ],
+    }),
+
+    /* =================== AÇÕES AVULSAS =================== */
+    projeto({
+      id: 'acoes-nov26', mes: '2026-11', perfil: 'grupo',
+      nome: 'Ações avulsas',
+      resumo: 'Lives e ações que surgem no meio da semana',
+      itens: [
+        { chave: 'live-sorteio-0611', fase: 'Ações avulsas', titulo: 'Live de sorteio (06/11, meio-dia)', resp: 'yuri', formato: 'Live', categoria: 'comercial', prazo: '2026-11-06', publicar: '2026-11-06', hora: '12h',
+          passos: ['Definir o prêmio e as regras do sorteio', 'Avisar nos stories que a live é ao meio-dia', 'Fazer a live e sortear', 'Divulgar quem ganhou'] },
       ],
     }),
 
@@ -304,7 +334,7 @@ window.TM_DADOS = {
       nome: 'Depoimentos de alunos',
       resumo: 'Vídeos que já estão prontos ou quase: um por semana, salpicados no feed',
       itens: [
-        { chave: 'fila', fase: 'Depoimentos', titulo: 'Separar os depoimentos prontos e editar os que faltam', resp: 'manu', formato: 'Vídeo', categoria: 'comercial', prazo: '2026-11-11',
+        { chave: 'fila', fase: 'Depoimentos', titulo: 'Separar os depoimentos prontos e editar os que faltam', resp: 'manu', formato: 'Edição', categoria: 'comercial', prazo: '2026-11-11',
           descricao: 'Para os dias sem vídeo novo para editar: deixar uma fila de depoimentos prontos no Drive.',
           passos: ['Listar no Drive os depoimentos que já estão prontos', 'Editar os que faltam (corte e legenda na tela)', 'Juntar as versões finais numa pasta só'] },
       ].concat(['2026-11-14', '2026-11-21', '2026-11-26', '2026-11-28'].map(d => ({
@@ -323,9 +353,6 @@ window.TM_DADOS = {
       itens: [
         { chave: 'carrossel-06', fase: 'Conteúdo fixo', titulo: 'Carrossel da Prof. Thaís · 06/11 (o que não saiu nesta semana)', resp: 'thiago', formato: 'Carrossel', categoria: 'conteudo',
           prazo: '2026-11-06', publicar: '2026-11-06', hora: '11h', passos: passosConteudo('da Prof. Thaís') },
-        { chave: 'trafego-tema', fase: 'Conteúdo fixo', titulo: 'Criativo para tráfego com o tema do carrossel da Prof. Thaís', resp: 'thiago', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-06',
-          descricao: 'Estamos sem post para o tráfego: usar o tema do carrossel da Thaís de hoje.',
-          passos: [COPY, 'Criar a arte com o tema do carrossel', REVISAO, 'Subir no Drive', TRAFEGO_ENVIAR] },
       ].concat(['2026-11-10', '2026-11-12', '2026-11-17', '2026-11-19', '2026-11-24', '2026-11-26'].map(d => ({
         chave: 'carrossel-' + d.slice(8), fase: 'Conteúdo fixo', titulo: 'Carrossel da Prof. Thaís · ' + dm(d), resp: 'thiago', formato: 'Carrossel', categoria: 'conteudo',
         prazo: diasUteisAntes(d, 1), publicar: d, passos: passosConteudo('da Prof. Thaís'),
