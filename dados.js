@@ -57,8 +57,9 @@ const PASSOS_TEXTOS = ['Legendas dos posts e vídeos', 'Mensagens de WhatsApp', 
 window.TM_DADOS = {
   exemplo: false,
 
-  // quem pode criar entregas novas pelo app
-  quemAdiciona: ['yuri'],
+  // quem pode criar entregas novas pelo app (desligado por enquanto; para ligar: ['yuri']
+  // e atualizar o código da planilha para a versão 2, ver README)
+  quemAdiciona: [],
 
   equipe: [
     { id: 'thiago', nome: 'Thiago', funcao: 'Designer e social media', cor: '#FACC15', foto: 'img/avatar-thiago.png' },
@@ -84,7 +85,7 @@ window.TM_DADOS = {
     { data: '2026-11-06', titulo: 'Vídeo do aquecimento Black Talks no ar', perfil: 'grupo', projeto: 'black-talks-nov26' },
     { data: '2026-11-11', titulo: 'Aquecimento Black Talks (só neste dia)', perfil: 'grupo', projeto: 'black-talks-nov26' },
     { data: '2026-11-16', ate: '2026-11-22', titulo: '“Vem aí” da Black Talks', perfil: 'grupo', projeto: 'black-talks-nov26' },
-    { data: '2026-11-18', hora: '17h', titulo: 'Live de lançamento do TEP (Rebecca e Natália)', perfil: 'ped', projeto: 'tep-lanc-nov26' },
+    { data: '2026-11-18', hora: '19h30', titulo: 'Live de lançamento do TEP (Rebecca e Natália)', perfil: 'ped', projeto: 'tep-lanc-nov26' },
     { data: '2026-11-23', titulo: 'Landing do TEP no ar', perfil: 'ped', projeto: 'tep-lanc-nov26' },
     { data: '2026-11-23', ate: '2026-11-29', titulo: 'Black Talks: cursos online com desconto', perfil: 'grupo', projeto: 'black-talks-nov26' },
     { data: '2026-11-25', titulo: 'Lançamento do Atualiza Talks no CBMEDE + R$ 9,90 no 1º mês', perfil: 'emergency', projeto: 'atualiza-lanc-nov26' },
@@ -129,10 +130,16 @@ window.TM_DADOS = {
         { chave: 'bk-video', fase: 'Vem aí (16 a 22/11)', titulo: 'Vídeo de divulgação da Black Talks', resp: 'manu', formato: 'Vídeo', categoria: 'comercial', prazo: '2026-11-17', publicar: '2026-11-20', depende: ['bk-roteiros'], passos: PASSOS_VIDEO },
         { chave: 'bk-vemai-2', fase: 'Vem aí (16 a 22/11)', titulo: 'Estático “vem aí” 2: programação especial', resp: 'thiago', formato: 'Carrossel', categoria: 'comercial', prazo: '2026-11-17', publicar: '2026-11-19', depende: ['bk-identidade', 'bk-condicoes'],
           passos: [{ t: 'Texto: lançamentos e condições especiais', r: 'yuri' }, 'Diagramar', REVISAO, 'Exportar e subir no Drive'] },
-        { chave: 'bk-vemai-3', fase: 'Vem aí (16 a 22/11)', titulo: 'Estático “vem aí” 3: começa segunda!', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-19', publicar: '2026-11-21', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
+        // contagem regressiva (feed e stories, na identidade da Black)
+        { chave: 'bk-contagem-5', fase: 'Vem aí (16 a 22/11)', titulo: 'Contagem regressiva da Black: “faltam 5 dias”', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-16', publicar: '2026-11-18', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
+        { chave: 'bk-contagem-3', fase: 'Vem aí (16 a 22/11)', titulo: 'Contagem regressiva da Black: “faltam 3 dias”', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-18', publicar: '2026-11-20', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
+        { chave: 'bk-vemai-3', fase: 'Vem aí (16 a 22/11)', titulo: 'Contagem regressiva da Black: “faltam 2 dias, começa segunda!”', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-19', publicar: '2026-11-21', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
+        { chave: 'bk-contagem-1', fase: 'Vem aí (16 a 22/11)', titulo: 'Contagem regressiva da Black: “é amanhã!”', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-20', publicar: '2026-11-22', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
         { chave: 'bk-textos', fase: 'Vem aí (16 a 22/11)', titulo: 'Textos da Black: legendas, WhatsApp e e-mail', resp: 'yuri', formato: 'Texto', categoria: 'comercial', prazo: '2026-11-19', depende: ['bk-condicoes'], passos: PASSOS_TEXTOS },
 
         // ---- Black (23 a 29/11) ----
+        { chave: 'bk-comecou', fase: 'Black (23 a 29/11)', titulo: 'Contagem regressiva da Black: “começou!”', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-20', publicar: '2026-11-23', hora: '8h', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
+        { chave: 'bk-ultimos', fase: 'Black (23 a 29/11)', titulo: 'Contagem regressiva da Black: “últimos 2 dias”', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-26', publicar: '2026-11-28', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
         { chave: 'bk-cursos', fase: 'Black (23 a 29/11)', titulo: 'Estáticos dos cursos online com desconto', resp: 'thiago', formato: 'Carrossel', categoria: 'comercial', prazo: '2026-11-20', publicar: '2026-11-23', depende: ['bk-identidade', 'bk-condicoes'],
           descricao: 'Uma arte por curso online e um carrossel com todos. Postar nos perfis do Grupo Talks, Emergency, Ped e Intensive.',
           passos: ['Uma arte por curso', 'Carrossel com todos os cursos', REVISAO, 'Exportar e subir no Drive'] },
@@ -150,7 +157,7 @@ window.TM_DADOS = {
     projeto({
       id: 'tep-lanc-nov26', mes: '2026-11', perfil: 'ped', tipo: 'lancamento',
       nome: 'Preparatório TEP 2027', data: '2026-11-23',
-      resumo: 'E-book no pré-lançamento · live em 18/11 às 17h · landing no ar em 23/11',
+      resumo: 'E-book no pré-lançamento · live em 18/11 às 19h30 · landing no ar em 23/11 · divulgação do curso até 30/11',
       itens: [
         { chave: 'ebook', fase: 'Pré-lançamento: e-book', titulo: 'Divulgação do e-book do TEP (em andamento)', resp: 'thiago', formato: 'Posts', categoria: 'comercial', prazo: '2026-11-20',
           inicial: 'producao', descricao: 'Pré-lançamento que já está rodando: posts e stories do e-book gratuito Guia do TEP até o lançamento.',
@@ -159,16 +166,26 @@ window.TM_DADOS = {
           passos: ['Roteiro do vídeo de divulgação', 'Roteiro do vídeo para tráfego', 'Mandar para a Manu pedir os vídeos aos professores'] },
         { chave: 'vem-ai', fase: 'Pré-lançamento: e-book', titulo: 'Criativo “vem aí”: Preparatório TEP 2027', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-12', publicar: '2026-11-14', passos: PASSOS_ESTATICO },
 
-        { chave: 'live-confirmar', fase: 'Live de lançamento (18/11, 17h)', titulo: 'Confirmar a live com a Rebecca e a Natália', resp: 'yuri', formato: 'Produção', categoria: 'comercial', prazo: '2026-11-10',
-          inicial: { status: 'producao', travado: true, motivo: 'Esperando a confirmação da Rebecca e da Natália' },
-          passos: ['Convite enviado: quarta, 18/11, às 17h', 'Confirmação das duas', 'Combinar tema e roteiro (mesmo esquema das lives de quarta)'] },
-        { chave: 'live-arte', fase: 'Live de lançamento (18/11, 17h)', titulo: 'Arte de divulgação da live (feed e stories)', resp: 'thiago', formato: 'Arte', categoria: 'comercial', prazo: '2026-11-12', publicar: '2026-11-13', depende: ['live-confirmar'], passos: PASSOS_ESTATICO },
-        { chave: 'live-convite', fase: 'Live de lançamento (18/11, 17h)', titulo: 'Vídeo das professoras convidando para a live', resp: 'manu', formato: 'Reels', categoria: 'comercial', prazo: '2026-11-13', publicar: '2026-11-16', depende: ['live-confirmar'],
-          passos: [{ t: 'Roteiro do convite', r: 'yuri' }, 'Pedir o vídeo à Rebecca e à Natália', 'Receber os vídeos', 'Editar com legenda na tela', REVISAO, 'Exportar 9:16 e subir no Drive'] },
-        { chave: 'live-lembrete', fase: 'Live de lançamento (18/11, 17h)', titulo: 'Stories de lembrete: “hoje, às 17h”', resp: 'thiago', formato: 'Stories', categoria: 'comercial', prazo: '2026-11-17', publicar: '2026-11-18', hora: '9h', depende: ['live-arte'], passos: PASSOS_ESTATICO },
-        { chave: 'live', fase: 'Live de lançamento (18/11, 17h)', titulo: 'Live de lançamento do TEP', resp: 'yuri', formato: 'Live', categoria: 'comercial', prazo: '2026-11-18', publicar: '2026-11-18', hora: '17h', depende: ['live-confirmar'],
+        // ---- Live confirmada: quarta, 18/11, às 19h30 ----
+        { chave: 'live-roteiros', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Live confirmada: tema e roteiros dos vídeos de divulgação', resp: 'yuri', formato: 'Roteiro', categoria: 'comercial', prazo: '2026-11-10',
+          inicial: { status: 'producao', passos: [0] }, descricao: 'A Rebecca e a Natália confirmaram: quarta, 18/11, às 19h30.',
+          passos: ['Live confirmada com a Rebecca e a Natália (18/11, 19h30)', 'Combinar o tema e o roteiro da live com as duas', 'Roteiros dos 2 vídeos de divulgação da live', 'Mandar os roteiros para a Manu pedir os vídeos às duas'] },
+        { chave: 'live-arte', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Criativo de divulgação da live (feed e stories)', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-11', publicar: '2026-11-12',
+          descricao: 'Data, horário (19h30), fotos da Rebecca e da Natália e o tema da live.',
+          passos: [{ t: 'Passar o tema e o título da live', r: 'yuri' }, 'Criar a arte (feed e stories)', REVISAO, 'Exportar e subir no Drive'] },
+        { chave: 'live-trafego', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Criativo da live para tráfego', resp: 'thiago', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-12', publicar: '2026-11-13', depende: ['live-arte'],
+          descricao: 'Para impulsionar a live de 13 a 18/11.', passos: PASSOS_TRAFEGO },
+        { chave: 'live-video-1', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Vídeo 1 da live: Rebecca e Natália convidando', resp: 'manu', formato: 'Reels', categoria: 'comercial', prazo: '2026-11-12', publicar: '2026-11-14', depende: ['live-roteiros'],
+          descricao: 'Também vai para o tráfego, para impulsionar a live.',
+          passos: ['Mandar o roteiro e pedir o vídeo à Rebecca e à Natália', 'Receber os vídeos', 'Editar com legenda na tela', REVISAO, 'Exportar 9:16 e subir no Drive'] },
+        { chave: 'live-amanha', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Criativo “é amanhã, às 19h30”', resp: 'thiago', formato: 'Stories', categoria: 'comercial', prazo: '2026-11-16', publicar: '2026-11-17', depende: ['live-arte'], passos: PASSOS_ESTATICO },
+        { chave: 'live-video-2', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Vídeo 2 da live: “é hoje, às 19h30”', resp: 'manu', formato: 'Reels', categoria: 'comercial', prazo: '2026-11-16', publicar: '2026-11-18', hora: '12h', depende: ['live-roteiros'],
+          passos: ['Pedir às duas um vídeo curto (ou usar trechos do vídeo 1)', 'Editar com legenda na tela', REVISAO, 'Exportar 9:16 e subir no Drive'] },
+        { chave: 'live-lembrete', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Stories “hoje, às 19h30”', resp: 'thiago', formato: 'Stories', categoria: 'comercial', prazo: '2026-11-17', publicar: '2026-11-18', hora: '9h', depende: ['live-arte'], passos: PASSOS_ESTATICO },
+        { chave: 'live-ao-vivo', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Stories “estamos ao vivo” com o link', resp: 'thiago', formato: 'Stories', categoria: 'comercial', prazo: '2026-11-17', publicar: '2026-11-18', hora: '19h30', depende: ['live-arte'], passos: PASSOS_ESTATICO },
+        { chave: 'live', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Live de lançamento do TEP', resp: 'yuri', formato: 'Live', categoria: 'comercial', prazo: '2026-11-18', publicar: '2026-11-18', hora: '19h30', depende: ['live-roteiros'],
           passos: ['Preparar a transmissão: link, capa e perguntas', 'Fazer a live com a Rebecca e a Natália', 'Salvar a gravação no Drive para a Manu'] },
-        { chave: 'live-cortes', fase: 'Live de lançamento (18/11, 17h)', titulo: 'Cortes da live para reels', resp: 'manu', formato: 'Reels', categoria: 'comercial', prazo: '2026-11-20', publicar: '2026-11-21', depende: ['live'],
+        { chave: 'live-cortes', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Cortes da live para reels', resp: 'manu', formato: 'Reels', categoria: 'comercial', prazo: '2026-11-20', publicar: '2026-11-21', depende: ['live'],
           passos: ['Escolher 3 trechos da live', 'Editar com legenda na tela', REVISAO, 'Exportar 9:16 e subir no Drive'] },
 
         { chave: 'data', fase: 'Lançamento (23/11)', titulo: 'Criativo com a data: inscrições a partir de 23/11', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-18', publicar: '2026-11-20', passos: PASSOS_ESTATICO },
@@ -182,7 +199,18 @@ window.TM_DADOS = {
         { chave: 'landing', fase: 'Lançamento (23/11)', titulo: 'Landing page do TEP no ar', resp: 'yuri', formato: 'Página', categoria: 'comercial', prazo: '2026-11-20', publicar: '2026-11-23', depende: ['video'],
           descricao: 'A página já existe com dados de exemplo: falta trocar pelos dados reais, colocar o vídeo e o checkout.',
           passos: ['Revisar textos, preços e datas', 'Colocar o vídeo de divulgação', 'Colocar o link do checkout', 'Testar no celular', 'Publicar'] },
-      ],
+
+        // ---- Divulgação do curso depois do lançamento ----
+      ].concat([
+        ['curso-inclui', 'o que inclui o Preparatório TEP 2027', '2026-11-24'],
+        ['curso-professores', 'os professores do curso', '2026-11-26'],
+        ['curso-como', 'como funciona a preparação para o TEP', '2026-11-28'],
+        ['curso-inscricao', 'inscrições abertas (link na bio)', '2026-11-30'],
+      ].map(([chave, tema, d]) => ({
+        chave, fase: 'Divulgação do curso (23 a 30/11)', titulo: 'Criativo de divulgação do curso: ' + tema, resp: 'yuri', formato: 'Criativo', categoria: 'comercial',
+        prazo: diasUteisAntes(d, 2), publicar: d,
+        passos: ['Texto do criativo', 'Criar a arte (feed e stories)', 'Exportar e subir no Drive'],
+      }))),
     }),
 
     /* =================== ATUALIZA TALKS (Emergency) =================== */
@@ -193,15 +221,17 @@ window.TM_DADOS = {
       itens: [
         { chave: 'roteiros', fase: 'Pré-lançamento', titulo: 'Roteiros dos vídeos do Atualiza Talks', resp: 'yuri', formato: 'Roteiro', categoria: 'comercial', prazo: '2026-11-13',
           passos: ['Roteiro do vídeo de divulgação', 'Roteiro do vídeo para tráfego', 'Mandar para a Manu pedir os vídeos'] },
-        { chave: 'vem-ai', fase: 'Pré-lançamento', titulo: 'Estáticos “vem aí” do Atualiza Talks', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-16', publicar: '2026-11-18',
-          descricao: 'Postar no Emergency e no Grupo Talks.', passos: PASSOS_ESTATICO },
-        { chave: 'data', fase: 'Pré-lançamento', titulo: 'Criativo com a data: lançamento no CBMEDE, 25/11', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-19', publicar: '2026-11-21',
-          descricao: 'Postar no Emergency e no Grupo Talks.', passos: PASSOS_ESTATICO },
+        { chave: 'vem-ai', fase: 'Pré-lançamento', titulo: 'Estáticos “vem aí” do Atualiza Talks', resp: 'yuri', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-16', publicar: '2026-11-18',
+          descricao: 'Postar no Emergency e no Grupo Talks.', passos: PASSOS_ESTATICO_YURI },
+        { chave: 'data', fase: 'Pré-lançamento', titulo: 'Criativo com a data: lançamento no CBMEDE, 25/11', resp: 'yuri', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-19', publicar: '2026-11-21',
+          descricao: 'Postar no Emergency e no Grupo Talks.', passos: PASSOS_ESTATICO_YURI },
         { chave: 'video', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Vídeo de divulgação do Atualiza Talks', resp: 'manu', formato: 'Vídeo', categoria: 'comercial', prazo: '2026-11-20', publicar: '2026-11-25', depende: ['roteiros'],
           descricao: 'Vai na landing page e nos perfis do Emergency e do Grupo Talks.', passos: PASSOS_VIDEO },
         { chave: 'video-trafego', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Vídeo do Atualiza Talks para tráfego', resp: 'manu', formato: 'Vídeo', categoria: 'trafego', prazo: '2026-11-23', publicar: '2026-11-25', depende: ['roteiros'], passos: PASSOS_VIDEO_TRAFEGO },
-        { chave: 'estaticos', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Estáticos de lançamento (Emergency e Grupo Talks)', resp: 'thiago', formato: 'Carrossel', categoria: 'comercial', prazo: '2026-11-23', publicar: '2026-11-25', passos: PASSOS_CARROSSEL },
-        { chave: 'trafego', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Criativos do Atualiza Talks para tráfego', resp: 'thiago', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-23', publicar: '2026-11-25', passos: PASSOS_TRAFEGO },
+        { chave: 'estaticos', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Estáticos de lançamento (Emergency e Grupo Talks)', resp: 'yuri', formato: 'Carrossel', categoria: 'comercial', prazo: '2026-11-23', publicar: '2026-11-25',
+          passos: ['Texto dos cards', 'Diagramar o carrossel', 'Exportar e subir no Drive'] },
+        { chave: 'trafego', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Criativos do Atualiza Talks para tráfego', resp: 'yuri', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-23', publicar: '2026-11-25',
+          passos: ['Criar 3 variações (1:1, 4:5 e 9:16)', 'Subir no Drive', 'Enviar para quem cuida do tráfego'] },
         { chave: 'landing', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Landing page do Atualiza Talks no ar', resp: 'yuri', formato: 'Página', categoria: 'comercial', prazo: '2026-11-23', publicar: '2026-11-25', depende: ['video'],
           descricao: 'A página já existe: falta preço (R$ 9,90 no 1º mês na Black), checkout, professores e o vídeo.',
           passos: ['Preço e link do checkout', 'Professores', 'Colocar o vídeo', 'Testar no celular', 'Publicar'] },

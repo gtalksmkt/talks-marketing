@@ -270,7 +270,7 @@ function mudar(id, campos, texto) {
   const agora = new Date().toISOString();
   const base = st(id);
   // primeira mudança numa entrega com etapa de partida: manda a etapa junto para a planilha
-  const envio = estado[id] || !it.inicial ? campos : Object.assign({ status: base.status, travado: base.travado, motivo: base.motivo }, campos);
+  const envio = estado[id] || !it.inicial ? campos : Object.assign({ status: base.status, travado: base.travado, motivo: base.motivo, passos: base.passos }, campos);
   estado[id] = normalizar(Object.assign({}, base, campos, { por: eu, atualizado: agora }));
   if ('def' in campos) montarItens();
   LS.set('estado', estado);

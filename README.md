@@ -48,7 +48,7 @@ Funciona no navegador do computador e pode ser instalado no celular (iPhone e An
 
 ## Entregas novas pelo app
 
-Quem está em `quemAdiciona` (hoje só o Yuri) vê o botão **Nova entrega** no Quadro e na página de cada lançamento. A entrega nova fica guardada na planilha e aparece para toda a equipe; dá para apagar abrindo a entrega.
+**Desligado por enquanto** (`quemAdiciona: []` no `dados.js`). Para ligar, coloque `quemAdiciona: ['yuri']`: quem estiver na lista vê o botão **Nova entrega** no Quadro e na página de cada lançamento. A entrega nova fica guardada na planilha e aparece para toda a equipe; dá para apagar abrindo a entrega.
 
 Isso precisa do código da planilha na **versão 2** (`apps-script/Codigo.gs`). Para atualizar (mesmo link, não muda nada no app):
 
