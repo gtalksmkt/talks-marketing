@@ -1,6 +1,6 @@
 /** @OnlyCurrentDoc */
 /**
- * TALKS MARKETING · sincronização da equipe (versão 2)
+ * TALKS MARKETING · sincronização da equipe (versão 3)
  * ---------------------------------------------------------------
  * Cole este código em uma planilha Google:
  *   Extensões > Apps Script > apague o que tiver > cole > salvar.
@@ -11,16 +11,17 @@
  *   Versão: Nova versão > Implantar.
  *
  * A planilha guarda o andamento (etapa, link do Drive, passos, travas,
- * observações) e as entregas novas criadas pelo app (coluna "def").
+ * observações), as entregas novas criadas pelo app (coluna "def") e o dia
+ * e o perfil escolhidos no calendário da Semana (colunas "dia" e "perfil").
  * O planejamento do mês fica no dados.js.
  */
 
-var VERSAO = 2;
+var VERSAO = 3;
 var ABA_STATUS = 'Status';
 var ABA_HIST = 'Histórico';
-var COLS = ['id', 'status', 'link', 'travado', 'motivo', 'passos', 'nota', 'por', 'atualizado', 'def'];
+var COLS = ['id', 'status', 'link', 'travado', 'motivo', 'passos', 'nota', 'por', 'atualizado', 'def', 'dia', 'perfil'];
 var COLS_HIST = ['quando', 'quem', 'id', 'entrega', 'o que mudou'];
-var CAMPOS = ['status', 'link', 'travado', 'motivo', 'passos', 'nota', 'def'];
+var CAMPOS = ['status', 'link', 'travado', 'motivo', 'passos', 'nota', 'def', 'dia', 'perfil'];
 var LIMITE_HIST = 60;
 
 function doGet() {
@@ -45,7 +46,7 @@ function doPost(e) {
       if (!m || !m.id) return;
       var id = String(m.id).slice(0, 200);
       var linha = linhaDe[id];
-      var atual = linha ? aba.getRange(linha, 1, 1, COLS.length).getValues()[0] : [id, 'afazer', '', false, '', '[]', '', '', '', ''];
+      var atual = linha ? aba.getRange(linha, 1, 1, COLS.length).getValues()[0] : [id, 'afazer', '', false, '', '[]', '', '', '', '', '', ''];
       var campos = m.campos || {};
       CAMPOS.forEach(function (c) {
         if (!(c in campos)) return;
@@ -53,6 +54,8 @@ function doPost(e) {
         if (c === 'passos') v = JSON.stringify(Array.isArray(v) ? v : []);
         else if (c === 'def') v = v ? JSON.stringify(v).slice(0, 5000) : '';
         else if (c === 'travado') v = v === true;
+        // o apóstrofo guarda como texto (sem ele a planilha vira a data em outro formato)
+        else if (c === 'dia') v = v ? "'" + String(v).slice(0, 10) : '';
         else v = String(v == null ? '' : v).slice(0, 2000);
         atual[COLS.indexOf(c)] = v;
       });
@@ -95,6 +98,8 @@ function estado_() {
       por: String(o.por || ''),
       atualizado: ehData_(o.atualizado) ? o.atualizado.toISOString() : String(o.atualizado || ''),
       def: def,
+      dia: ehData_(o.dia) ? Utilities.formatDate(o.dia, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(o.dia || '').replace(/^'/, ''),
+      perfil: String(o.perfil || ''),
     };
   }
   var hist = aba_(ABA_HIST, COLS_HIST);

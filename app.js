@@ -160,7 +160,16 @@ function montarItens() {
     const d = estado[id] && estado[id].def;
     if (d && !d.apagado && BASE_PROJ[d.projeto]) (extras[d.projeto] = extras[d.projeto] || []).push(itemExtra(id, d));
   });
-  PROJETOS = BASE.map(p => (extras[p.id] ? Object.assign({}, p, { itens: p.itens.concat(extras[p.id]) }) : p));
+  // dia e perfil escolhidos no calendário da Semana (guardados na planilha) por cima do dados.js
+  const ajustar = it => {
+    const e = estado[it.id];
+    const base = Object.assign({}, it, { publicarBase: it.publicar || '', perfilBase: it.perfil });
+    if (!e || (!e.dia && !e.perfil)) return base;
+    if (e.dia) base.publicar = e.dia === 'sem' ? '' : e.dia;
+    if (e.perfil && PERFIL[e.perfil]) base.perfil = e.perfil;
+    return base;
+  };
+  PROJETOS = BASE.map(p => Object.assign({}, p, { itens: p.itens.concat(extras[p.id] || []).map(ajustar) }));
   PROJ = Object.fromEntries(PROJETOS.map(p => [p.id, p]));
   ITENS = PROJETOS.flatMap(p => p.itens);
   ITEM = Object.fromEntries(ITENS.map(i => [i.id, i]));
@@ -190,7 +199,14 @@ function escolherMes() {
   if (MESES_DISP.includes(atual)) return atual;
   return MESES_DISP.find(m => m > atual) || MESES_DISP[MESES_DISP.length - 1] || atual;
 }
-const ABAS = ['inicio', 'quadro', 'lancamentos', 'agenda'];
+const ABAS = ['inicio', 'semana', 'quadro', 'lancamentos', 'agenda'];
+// segunda-feira da semana (no fim de semana, já mostra a próxima)
+function segundaDe(iso) {
+  const d = lerData(iso), dow = d.getDay();
+  d.setDate(d.getDate() + (dow === 0 ? 1 : dow === 6 ? 2 : 1 - dow));
+  return isoData(d);
+}
+const somar = (iso, n) => { const d = lerData(iso); d.setDate(d.getDate() + n); return isoData(d); };
 const ui = {
   aba: ABAS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'inicio',
   perfil: LS.get('filtroPerfil', 'todos'),
@@ -199,6 +215,7 @@ const ui = {
   projeto: null,
   mes: escolherMes(),
   passado: false,
+  semana: segundaDe(hojeISO()),
   intro: null,
   plataforma: ANDROID ? 'android' : 'iphone',
 };
@@ -222,6 +239,8 @@ function normalizar(v) {
     por: v.por ? String(v.por) : '',
     atualizado: paraISO(v.atualizado),
     def: def && typeof def === 'object' ? def : null,
+    dia: /^(\d{4}-\d{2}-\d{2}|sem)$/.test(String(v.dia || '')) ? String(v.dia) : '',
+    perfil: v.perfil && PERFIL[v.perfil] ? String(v.perfil) : '',
   };
 }
 Object.keys(estado).forEach(k => { estado[k] = normalizar(estado[k]); });
@@ -250,17 +269,33 @@ const proximoPasso = it => {
   const i = it.passos.findIndex((p, k) => !s.passos.includes(k));
   return i < 0 ? null : it.passos[i];
 };
-// é "meu" se eu sou o responsável, se o próximo passo é meu ou se ficou pronto e eu programo ("Sua vez")
+// é "meu" se eu sou o responsável, se o próximo passo é meu (até a legenda de algo pronto)
+// ou se ficou pronto, sem passo pendente, e eu programo ("Sua vez")
 const meu = it => {
   if (!eu) return false;
   if (it.resp === eu) return true;
-  if (faltaProgramar(it)) return publicaDe(it) === eu;
-  if (feito(it.id)) return false;
+  const s = st(it.id);
+  if (s.status === 'programado') return false;
   const p = proximoPasso(it);
-  return !!(p && p.r === eu);
+  if (p) return p.r === eu;
+  return faltaProgramar(it) && publicaDe(it) === eu;
 };
 // o que ainda depende de mim (fazer, um passo meu ou programar a publicação)
-const pendenteParaMim = it => !!eu && ((meu(it) && !feito(it.id)) || (faltaProgramar(it) && publicaDe(it) === eu));
+const pendenteParaMim = it => {
+  if (!eu) return false;
+  const s = st(it.id);
+  if (s.status === 'programado') return false;
+  if (it.resp !== eu) return meu(it);
+  if (s.status !== 'pronto') return true;
+  const p = proximoPasso(it);
+  return p ? p.r === eu || !p.r : publicaDe(it) === eu;
+};
+// posts que aparecem no calendário da Semana (tráfego, páginas, roteiros etc. não entram)
+const FORMATOS_POST = ['Carrossel', 'Criativo', 'Stories', 'Reels', 'Vídeo'];
+const ehPost = it => it.categoria !== 'trafego' && FORMATOS_POST.includes(it.formato);
+// plano do dia (dados.js → planos)
+const planoDe = (pid, dia) => { const p = (D.planos || {})[dia || hojeISO()]; return p && Array.isArray(p[pid]) ? p[pid] : null; };
+const itensDeHoje = () => new Set(Object.values((D.planos || {})[hojeISO()] || {}).flat().map(b => b.item).filter(id => ITEM[id]));
 const podeAdicionar = () => !!eu && (D.quemAdiciona || []).includes(eu);
 const aguardando = it => it.depende.filter(d => ITEM[d] && !feito(d));
 const contaPassos = it => [st(it.id).passos.filter(i => i < it.passos.length).length, it.passos.length];
@@ -284,7 +319,7 @@ function mudar(id, campos, texto) {
   // primeira mudança numa entrega com etapa de partida: manda a etapa junto para a planilha
   const envio = estado[id] || !it.inicial ? campos : Object.assign({ status: base.status, travado: base.travado, motivo: base.motivo, passos: base.passos }, campos);
   estado[id] = normalizar(Object.assign({}, base, campos, { por: eu, atualizado: agora }));
-  if ('def' in campos) montarItens();
+  if ('def' in campos || 'dia' in campos || 'perfil' in campos) montarItens();
   LS.set('estado', estado);
   historico.unshift({ quando: agora, quem: eu, id, entrega: it.titulo, texto });
   historico = historico.slice(0, 80);
@@ -340,6 +375,8 @@ function salvarLink(id, valor) {
 const sync = { estado: ENDPOINT ? 'carregando' : 'local', ocupado: false, repetir: false, timer: 0, erro: '', versao: LS.get('versaoPlanilha', 0) };
 // entregas novas pelo app precisam do código da planilha versão 2 (coluna "def")
 const suportaExtras = () => !ENDPOINT || sync.versao >= 2;
+// arrastar no calendário guarda "dia" e "perfil": precisa do código da planilha versão 3
+const suportaCal = () => !ENDPOINT || sync.versao >= 3;
 
 function aplicarServidor(j) {
   const novo = {};
@@ -435,6 +472,7 @@ function cardHTML(it, o = {}) {
       <span class="card-pf"><i></i>${esc(p.curto)}</span>
       <span class="card-fmt">${esc(it.formato || '')}</span>
       ${ehMeu ? `<span class="tag-voce">${it.resp === eu ? 'Você' : 'Sua vez'}</span>` : ''}
+      ${o.hoje ? '<span class="tag-hoje">Hoje</span>' : ''}
       ${o.status ? chipStatus(s.status) : ''}
     </div>
     <h3 class="card-titulo">${esc(it.titulo)}</h3>
@@ -442,9 +480,11 @@ function cardHTML(it, o = {}) {
     ${s.travado ? `<p class="card-aviso trava">${ic('alerta')}<span>Travado: ${esc(s.motivo || 'sem motivo informado')}</span></p>` : ''}
     ${!s.travado && !fe && esp.length ? `<p class="card-aviso espera">${ic('relogio')}<span>Aguardando ${esc(ITEM[esp[0]].titulo)}${esp.length > 1 ? ' e mais ' + (esp.length - 1) : ''}</span></p>` : ''}
     ${(() => {
-      const pub = faltaProgramar(it) ? publicaDe(it) : null;
+      if (s.status === 'programado') return '';
+      // pronto: primeiro o passo que faltar (ex.: legenda), depois programar
+      const px = !s.travado && (s.status === 'pronto' || (!fe && !esp.length)) ? proximoPasso(it) : null;
+      const pub = !px && faltaProgramar(it) ? publicaDe(it) : null;
       if (pub) return `<p class="card-prox">${ic('agendado')}<span>${pub === eu ? 'Sua vez: programar' : 'Falta programar'} para ${fmtCurta(it.publicar)}${it.hora ? ', ' + esc(it.hora) : ''}${pub !== eu ? ` <b>(${esc(PESSOA[pub].nome)})</b>` : ''}</span></p>`;
-      const px = !s.travado && !fe && !esp.length ? proximoPasso(it) : null;
       if (!px) return '';
       const outro = px.r && px.r !== it.resp && PESSOA[px.r];
       const txt = px.r === eu && it.resp !== eu ? 'Sua vez: ' + esc(px.t) : outro ? `Esperando ${esc(PESSOA[px.r].nome)}: ${esc(px.t)}` : 'Próximo: ' + esc(px.t);
@@ -559,25 +599,50 @@ function heroMarcos() {
   </section>`;
 }
 
+const minutos = h => { const [a, b] = String(h).split(':').map(Number); return a * 60 + (b || 0); };
+const fmtHora = h => { const [a, b] = String(h).split(':'); return Number(a) + 'h' + (b && b !== '00' ? b : ''); };
+
+// blocos de horário do plano do dia
+function blocosHTML(blocos, o = {}) {
+  const agora = new Date(), min = agora.getHours() * 60 + agora.getMinutes();
+  const vistos = new Set();
+  return `<ol class="blocos ${o.compacto ? 'compacto' : ''}">${blocos.map(b => {
+    const ini = minutos(b.das), fim = minutos(b.ate);
+    const atual = min >= ini && min < fim, passou = min >= fim;
+    const it = b.item && ITEM[b.item];
+    const primeiro = it && !vistos.has(it.id);
+    if (it) vistos.add(it.id);
+    const faz = esc(b.faz || (it ? it.titulo : ''));
+    return `<li class="bloco ${b.pausa ? 'pausa' : ''} ${atual ? 'agora' : ''} ${passou ? 'passou' : ''}">
+      <span class="bl-hora"><b>${fmtHora(b.das)}</b><small>${fmtHora(b.ate)}</small></span>
+      <div class="bl-corpo">
+        ${o.compacto && it ? `<button class="bl-faz" data-acao="abrir" data-id="${it.id}">${faz}</button>` : `<p class="bl-faz">${faz}${atual ? ' <span class="tag-agora">agora</span>' : ''}</p>`}
+        ${it && !o.compacto ? (primeiro ? cardHTML(it, { status: true }) : `<button class="bl-ver" data-acao="abrir" data-id="${it.id}">Continuar: abrir a entrega ${ic('seta')}</button>`) : ''}
+      </div>
+    </li>`;
+  }).join('')}</ol>`;
+}
+
 function telaInicio() {
   const me = PESSOA[eu] || { nome: '' };
+  const hojeIso = hojeISO();
   const doMesItens = ITENS.filter(doMes);
-  const meusAbertos = doMesItens.filter(pendenteParaMim).sort(ordenar);
-  const n = {
-    fazer: meusAbertos.filter(i => ['afazer', 'producao'].includes(st(i.id).status) || faltaProgramar(i)).length,
-    aprov: meusAbertos.filter(i => st(i.id).status === 'aprovacao').length,
-    trav: meusAbertos.filter(i => st(i.id).travado).length,
-    atr: meusAbertos.filter(atrasado).length,
-  };
+  const plano = planoDe(eu);
+  const exp = (D.expediente || {})[eu];
+  const hojeSet = itensDeHoje();
+  // entregas de hoje de outras pessoas que esperam um passo meu (copy, roteiro, revisão, legenda...)
+  const destravar = [...hojeSet].map(id => ITEM[id]).filter(it => it && it.resp !== eu && st(it.id).status !== 'programado'
+    && it.passos.some((p, i) => p.r === eu && !st(it.id).passos.includes(i)));
+  const noBacklog = doMesItens.filter(it => pendenteParaMim(it) && !hojeSet.has(it.id)).length;
   const travados = doMesItens.filter(i => st(i.id).travado && !feito(i.id)).sort(ordenar);
   const atrasados = doMesItens.filter(i => atrasado(i) && !st(i.id).travado).sort(ordenar);
-  const liberar = doMesItens.filter(x => x.resp === eu && !feito(x.id))
-    .map(x => ({ x, deps: doMesItens.filter(y => y.depende.includes(x.id) && !feito(y.id) && y.resp !== eu) }))
-    .filter(o => o.deps.length).sort((a, b) => comPrazo(a.x, b.x));
-  const programar = doMesItens.filter(faltaProgramar).sort((a, b) => (a.publicar < b.publicar ? -1 : 1));
+  const limite = somar(hojeIso, 3);
+  const prontosParaProgramar = doMesItens.filter(faltaProgramar).sort((a, b) => (a.publicar < b.publicar ? -1 : 1));
+  const programar = prontosParaProgramar.filter(it => it.publicar <= limite);
+  const depois = prontosParaProgramar.length - programar.length;
+  const equipe = D.equipe.filter(p => p.id !== eu && planoDe(p.id));
   const total = doMesItens.length, prontos = doMesItens.filter(i => feito(i.id)).length;
   const hoje = new Date();
-  const LIM = 6;
 
   return `<div class="pagina pagina-inicio">
     <header class="cab-tela">
@@ -590,26 +655,27 @@ function telaInicio() {
     ${avisos()}
     <div class="inicio-grade">
       <div class="col-principal">
-        ${D.marcos ? heroMarcos() : heroLancamentos()}
-        <div class="numeros">
-          <button class="numero" data-acao="ver-meus"><b>${n.fazer}</b><span>Para fazer</span></button>
-          <button class="numero" data-acao="ver-meus" style="--st:${ST.aprovacao.cor}"><b>${n.aprov}</b><span>Em aprovação</span></button>
-          <button class="numero ${n.trav ? 'alerta' : ''}" data-acao="ver-meus"><b>${n.trav}</b><span>Travadas</span></button>
-          <button class="numero ${n.atr ? 'ruim' : ''}" data-acao="ver-meus"><b>${n.atr}</b><span>Atrasadas</span></button>
-        </div>
         <section class="secao" data-tour="minhas">
-          <div class="secao-cab"><h2>Suas entregas</h2>${meusAbertos.length > LIM ? `<button class="ver" data-acao="ver-meus">Ver todas (${meusAbertos.length}) ${ic('seta')}</button>` : ''}</div>
-          ${meusAbertos.length
-            ? `<div class="lista-cards">${meusAbertos.slice(0, LIM).map(it => cardHTML(it, { status: true })).join('')}</div>`
-            : `<div class="vazio">${ic('feito')}<p><b>Nada pendente com você neste mês.</b><br>Dá uma olhada no Quadro para ver se alguém precisa de ajuda.</p></div>`}
+          <div class="secao-cab"><h2>Seu dia</h2>${exp ? `<span class="expediente">${ic('relogio')} Expediente: ${esc(exp)}</span>` : ''}</div>
+          ${plano ? blocosHTML(plano)
+            : `<div class="vazio">${ic('agenda')}<p><b>Nada marcado com horário para você hoje.</b><br>${destravar.length ? 'Veja abaixo o que a equipe precisa de você.' : 'Quando estiver livre, pegue algo do backlog.'}</p></div>`}
+          <button class="btn btn-sec btn-backlog" data-acao="ver-meus">${ic('quadro')} Quando estiver livre: ver o backlog${noBacklog ? ` (${noBacklog} com você)` : ''}</button>
         </section>
-        ${liberar.length ? `<section class="secao">
-          <div class="secao-cab"><h2>Tem gente esperando por você</h2></div>
-          <div class="esperas">${liberar.slice(0, 4).map(o => `<div class="espera">
-            <button class="espera-de" data-acao="abrir" data-id="${o.x.id}"><small>Quando você terminar</small><b>${esc(o.x.titulo)}</b></button>
-            <div class="espera-para"><small>libera:</small>${o.deps.map(y => `<button class="espera-item" data-acao="abrir" data-id="${y.id}">${avatar(y.resp, 'peq')}<span>${esc(y.titulo)}</span></button>`).join('')}</div>
+        ${destravar.length ? `<section class="secao">
+          <div class="secao-cab"><h2>Hoje a equipe precisa de você</h2></div>
+          <div class="lista-mini">${destravar.map(it => {
+            const ps = it.passos.filter((p, i) => p.r === eu && !st(it.id).passos.includes(i)).map(p => p.t);
+            return linhaMini(it, `${esc(PESSOA[it.resp].nome)} precisa: ${esc(ps.join(', '))}`);
+          }).join('')}</div>
+        </section>` : ''}
+        ${equipe.length ? `<section class="secao">
+          <div class="secao-cab"><h2>O dia da equipe</h2></div>
+          <div class="dia-equipe">${equipe.map(p => `<div class="de-pessoa">
+            <div class="de-cab">${avatar(p.id)}<b>${esc(p.nome)}</b>${(D.expediente || {})[p.id] ? `<small>${esc(D.expediente[p.id])}</small>` : ''}</div>
+            ${blocosHTML(planoDe(p.id), { compacto: true })}
           </div>`).join('')}</div>
         </section>` : ''}
+        ${D.marcos ? heroMarcos() : heroLancamentos()}
       </div>
       <div class="col-lateral">
         <section class="secao" data-tour="travando">
@@ -620,15 +686,15 @@ function telaInicio() {
           </div>` : `<div class="vazio pequeno">${ic('feito')}<p>Nada travado e nada atrasado agora.</p></div>`}
         </section>
         <section class="secao">
-          <div class="secao-cab"><h2>Falta programar</h2></div>
+          <div class="secao-cab"><h2>Falta programar</h2>${depois ? `<button class="ver" data-acao="aba" data-v="semana">+${depois} na Semana ${ic('seta')}</button>` : ''}</div>
           ${programar.length ? `<div class="lista-mini">${programar.map(it => linhaMini(it, `Publicar ${fmtCurta(it.publicar)}${it.hora ? ', ' + esc(it.hora) : ''} (${fmtFalta(it.publicar)}) · ${esc(PESSOA[publicaDe(it)].nome)} programa`)).join('')}</div>`
-            : `<div class="vazio pequeno">${ic('agendado')}<p>Nada pronto esperando para ser programado.</p></div>`}
+            : `<div class="vazio pequeno">${ic('agendado')}<p>Nada pronto para sair nos próximos dias.</p></div>`}
         </section>
         <section class="secao">
           <div class="secao-cab"><h2>Últimas mudanças</h2></div>
           ${historico.some(h => ITEM[h.id]) ? `<ul class="atividade">${historico.filter(h => ITEM[h.id]).slice(0, 8).map(h => `<li>
             ${avatar(h.quem, 'peq')}
-            <p><b>${esc(PESSOA[h.quem] ? PESSOA[h.quem].nome : h.quem)}</b> ${esc(h.texto)}${ITEM[h.id] ? ` em <button class="link-txt" data-acao="abrir" data-id="${h.id}">${esc(ITEM[h.id].titulo)}</button>` : h.entrega ? ` em ${esc(h.entrega)}` : ''}<small>${fmtQuando(h.quando)}</small></p>
+            <p><b>${esc(PESSOA[h.quem] ? PESSOA[h.quem].nome : h.quem)}</b> ${esc(h.texto)} em <button class="link-txt" data-acao="abrir" data-id="${h.id}">${esc(ITEM[h.id].titulo)}</button><small>${fmtQuando(h.quando)}</small></p>
           </li>`).join('')}</ul>` : `<div class="vazio pequeno">${ic('relogio')}<p>Ninguém mexeu em nada ainda.</p></div>`}
         </section>
       </div>
@@ -640,16 +706,17 @@ function telaQuadro() {
   const itens = itensFiltrados();
   const porSt = Object.fromEntries(STATUS.map(s => [s.id, []]));
   itens.forEach(it => porSt[st(it.id).status].push(it));
+  const hojeSet = itensDeHoje();
   const ord = (a, b) => (ui.destacar ? meu(b) - meu(a) : 0) || ordenar(a, b);
   let tourMarcado = false;
   const cardsCol = sid => porSt[sid].sort(ord).map(it => {
     let tour = '';
     if (!tourMarcado && (meu(it) || sid === 'afazer')) { tour = 'card-quadro'; tourMarcado = true; }
-    return cardHTML(it, { arrastar: true, tour });
+    return cardHTML(it, { arrastar: true, tour, hoje: hojeSet.has(it.id) });
   }).join('');
   return `<div class="pagina pagina-larga">
     <header class="cab-tela">
-      <div><p class="sobre">${nomeMes(ui.mes)}</p><h1>Quadro</h1><p class="sub">${TOQUE ? 'Segure um card e arraste para mudar a etapa.' : 'Arraste os cards para mudar a etapa.'} Ou toque no card e escolha a etapa.</p></div>
+      <div><p class="sobre">${nomeMes(ui.mes)}</p><h1>Backlog</h1><p class="sub">Tudo o que ainda precisa ser feito no mês. Quando estiver livre, pegue algo daqui. ${TOQUE ? 'Segure um card e arraste para mudar a etapa.' : 'Arraste os cards para mudar a etapa.'}</p></div>
       <div class="cab-dir">${seletorMes()}
         <label class="interruptor"><input type="checkbox" data-campo="destacar" ${ui.destacar ? 'checked' : ''}><span class="int-trilho"><span></span></span>Destacar o que é meu</label>
         ${podeAdicionar() ? `<button class="btn btn-sec btn-nova" data-acao="nova">${ic('mais')} Nova entrega</button>` : ''}
@@ -779,6 +846,83 @@ function telaProjeto(p) {
   </div>`;
 }
 
+/* ---------- Semana: calendário de posts (segunda a sexta + fim de semana, por perfil) ---------- */
+function postHTML(it, arrastar) {
+  const s = st(it.id);
+  const cor = s.travado ? 'var(--trava)' : ST[s.status].cor;
+  const nome = s.travado ? 'Travado' : ST[s.status].nome;
+  return `<div class="post ${meu(it) ? 'meu' : ''} ${s.status === 'programado' ? 'prog' : ''}" ${arrastar ? 'data-arrastar' : ''} data-acao="abrir" data-id="${it.id}" role="button" tabindex="0" style="--st:${cor};${corPerfil(PERFIL[it.perfil])}" title="${esc(it.titulo)} · ${nome}">
+    <span class="post-tit">${esc(it.titulo)}</span>
+    <span class="post-meta"><i></i><span>${nome}${it.hora ? ' · ' + esc(it.hora) : ''}</span><span class="avs">${avatar(publicaDe(it) || it.resp, 'peq')}</span></span>
+  </div>`;
+}
+
+function moverPost(id, dia, perfil) {
+  const it = ITEM[id];
+  if (!it) return;
+  if (!suportaCal()) { toast('Falta atualizar o código da planilha para salvar o calendário.'); return; }
+  const novoDia = dia === 'sem' ? '' : dia;
+  const novoPerfil = perfil && PERFIL[perfil] ? perfil : it.perfil;
+  if (novoDia === (it.publicar || '') && novoPerfil === it.perfil) return;
+  const campos = {
+    dia: novoDia === it.publicarBase ? '' : (novoDia || 'sem'),
+    perfil: novoPerfil === it.perfilBase ? '' : novoPerfil,
+  };
+  const texto = novoDia ? `marcou para ${fmtCurta(novoDia)}${novoPerfil !== it.perfil ? ' no ' + PERFIL[novoPerfil].nome : ''}` : 'tirou do calendário';
+  mudar(id, campos, texto);
+  toast(`<b>${esc(it.titulo)}</b>: ${novoDia ? cap(fmtCurta(novoDia)) + ' · ' + esc(PERFIL[novoPerfil].nome) : 'sem dia'}`);
+}
+
+function telaSemana() {
+  const seg = ui.semana, hoje = hojeISO();
+  const dias = [0, 1, 2, 3, 4].map(i => somar(seg, i));
+  const fds = [somar(seg, 5), somar(seg, 6)];
+  const cols = dias.map(d => ({ chave: d, datas: [d], rotulo: cap(DIAS_C[lerData(d).getDay()]), num: dm(d) }))
+    .concat([{ chave: fds[0], datas: fds, rotulo: 'Sáb e dom', num: dm(fds[0]) + ' e ' + dm(fds[1]), fds: true }]);
+  const ok = suportaCal();
+  const posts = ITENS.filter(ehPost);
+  const daSemana = posts.filter(it => it.publicar && it.publicar >= seg && it.publicar <= fds[1]);
+  // sem dia = posts que tinham dia e foram tirados do calendário (ou entregas novas com cara de post)
+  const semDia = posts.filter(it => !it.publicar && doMes(it) && (it.publicarBase || it.extra));
+  const ini = lerData(seg), sex = lerData(dias[4]);
+  const titulo = `${ini.getDate()}${ini.getMonth() !== sex.getMonth() ? ' de ' + MESES[ini.getMonth()] : ''} a ${sex.getDate()} de ${MESES[sex.getMonth()]}`;
+  const perfis = D.perfis;
+  let grade = '<div class="cal-canto"></div>' + perfis.map(p => `<div class="cal-pf" style="${corPerfil(p)}">${marcaPerfil(p)}</div>`).join('');
+  cols.forEach(c => {
+    const ehHoje = c.datas.includes(hoje);
+    grade += `<div class="cal-dia ${ehHoje ? 'hoje' : ''} ${c.fds ? 'fds' : ''}"><b>${c.rotulo}</b><small>${c.num}${ehHoje ? ' · hoje' : ''}</small></div>`;
+    perfis.forEach(p => {
+      const ps = daSemana.filter(it => c.datas.includes(it.publicar) && it.perfil === p.id)
+        .sort((a, b) => (a.publicar + (a.hora || '')).localeCompare(b.publicar + (b.hora || '')));
+      grade += `<div class="cal-cel ${ehHoje ? 'hoje' : ''} ${c.fds ? 'fds' : ''}" data-dia="${c.chave}" data-perfil="${p.id}" style="${corPerfil(p)}">
+        <span class="cel-pf"><i></i>${esc(p.nome)}</span>${ps.map(it => postHTML(it, ok)).join('')}</div>`;
+    });
+  });
+  return `<div class="pagina pagina-larga">
+    <header class="cab-tela">
+      <div><p class="sobre">Calendário de posts</p><h1>Semana</h1><p class="sub">${ok ? (TOQUE ? 'Segure um post e arraste para outro dia ou perfil.' : 'Arraste os posts para outro dia ou perfil.') : 'Veja como os posts da semana estão distribuídos.'} A cor mostra a etapa de cada um.</p></div>
+      <div class="cab-dir">
+        <div class="sem-nav">
+          <button class="btn-ic" data-acao="semana" data-v="-7" aria-label="Semana anterior">${ic('voltar')}</button>
+          <b>${titulo}</b>
+          <button class="btn-ic" data-acao="semana" data-v="7" aria-label="Próxima semana">${ic('seta')}</button>
+        </div>
+        ${seg !== segundaDe(hoje) ? '<button class="btn btn-ghost" data-acao="semana" data-v="0">Voltar para esta semana</button>' : ''}
+        <button class="btn btn-ghost" data-acao="aba" data-v="agenda">${ic('lista')} Prazos em lista</button>
+      </div>
+    </header>
+    ${ok ? '' : `<div class="aviso aviso-exemplo">${ic('alerta')}<p><b>Falta um passo para arrastar e salvar para a equipe:</b> atualizar o código da planilha (versão 3). Até lá, o calendário só mostra.</p></div>`}
+    <div class="cal-legenda">${STATUS.map(s => `<span style="--st:${s.cor}"><i></i>${s.nome}</span>`).join('')}<span style="--st:var(--trava)"><i></i>Travado</span></div>
+    <div class="bandeja" data-dia="sem" data-perfil="">
+      <div class="bandeja-cab"><b>Posts sem dia</b><small>${semDia.length ? (ok ? 'Arraste para um dia do calendário.' : '') : (ok ? 'Nenhum. Arraste um post para cá para tirar do calendário.' : 'Nenhum.')}</small></div>
+      ${semDia.length ? `<div class="bandeja-lista">${semDia.map(it => postHTML(it, ok)).join('')}</div>` : ''}
+    </div>
+    <div class="cal-rolagem" data-tour="calendario">
+      <div class="cal" style="--cols:${cols.length};--linhas:${perfis.length}">${grade}</div>
+    </div>
+  </div>`;
+}
+
 function telaAgenda() {
   const itens = itensFiltrados();
   const hoje = hojeISO();
@@ -841,10 +985,14 @@ function render() {
   const tela = $('#tela');
   const rol = $('.quadro-rolagem');
   const sx = rol ? rol.scrollLeft : null;
-  const telas = { inicio: telaInicio, quadro: telaQuadro, lancamentos: telaLancamentos, agenda: telaAgenda };
+  const cal = $('.cal-rolagem');
+  const cx = cal ? cal.scrollLeft : null;
+  const telas = { inicio: telaInicio, semana: telaSemana, quadro: telaQuadro, lancamentos: telaLancamentos, agenda: telaAgenda };
   tela.innerHTML = eu ? telas[ui.aba]() : '';
   const rol2 = $('.quadro-rolagem');
   if (rol2 && sx != null) rol2.scrollLeft = sx;
+  const cal2 = $('.cal-rolagem');
+  if (cal2 && cx != null) cal2.scrollLeft = cx;
   if (rol2) marcarColunaVisivel();
   $$('[data-acao="aba"]').forEach(b => { const at = b.dataset.v === ui.aba; b.classList.toggle('ativa', at); b.setAttribute('aria-current', at ? 'page' : 'false'); });
   if (folha) renderFolha();
@@ -1137,6 +1285,7 @@ function iniciarArrasto() {
   arr.ativo = true;
   arr.card.classList.add('levantado');
   document.body.classList.add('arrastando');
+  if (arr.card.classList.contains('post')) document.body.classList.add('arrastando-post');
   if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) { /* ok */ } }
   moverArrasto(arr.x, arr.y);
   arr.raf = requestAnimationFrame(autoRolar);
@@ -1146,7 +1295,7 @@ function moverArrasto(x, y) {
   if (!arr.ativo) return;
   arr.fantasma.style.transform = `translate(${x - arr.dx}px, ${y - arr.dy}px) rotate(2deg) scale(1.03)`;
   const el = document.elementFromPoint(x, y);
-  const alvo = el ? el.closest('[data-drop]') : null;
+  const alvo = el ? el.closest('[data-drop], [data-dia]') : null;
   if (alvo !== arr.alvo) {
     if (arr.alvo) arr.alvo.classList.remove('sobre-alvo');
     if (alvo) alvo.classList.add('sobre-alvo');
@@ -1155,9 +1304,10 @@ function moverArrasto(x, y) {
 }
 function autoRolar() {
   if (!arr.ativo) return;
-  const rol = $('.quadro-rolagem');
+  const rol = $('.quadro-rolagem') || $('.cal-rolagem');
   const doca = $('#doca');
-  const dockTopo = doca && doca.offsetParent ? doca.getBoundingClientRect().top : innerHeight;
+  const comDoca = doca && doca.offsetParent && !document.body.classList.contains('arrastando-post');
+  const dockTopo = comDoca ? Math.min(doca.getBoundingClientRect().top, innerHeight) : innerHeight;
   if (rol && rol.scrollWidth > rol.clientWidth && arr.y < dockTopo - 10) {
     const r = rol.getBoundingClientRect();
     if (arr.x < r.left + 36) rol.scrollLeft -= 10;
@@ -1177,11 +1327,12 @@ function soltarArrasto() {
   if (arr.fantasma) arr.fantasma.remove();
   if (arr.card) arr.card.classList.remove('levantado');
   if (alvo) alvo.classList.remove('sobre-alvo');
-  document.body.classList.remove('arrastando');
+  document.body.classList.remove('arrastando', 'arrastando-post');
   Object.assign(arr, { ativo: false, card: null, id: null, fantasma: null, alvo: null, tipo: '' });
   if (eraAtivo) {
     ignorarClique = true; setTimeout(() => { ignorarClique = false; }, 120);
-    if (alvo && id) mudarStatus(id, alvo.dataset.drop);
+    if (alvo && id && alvo.dataset.drop) mudarStatus(id, alvo.dataset.drop);
+    else if (alvo && id && alvo.dataset.dia) moverPost(id, alvo.dataset.dia, alvo.dataset.perfil);
     if (renderPendente) { renderPendente = false; render(); }
   }
   return eraAtivo;
@@ -1314,16 +1465,16 @@ function passosTour() {
   const nome = PESSOA[eu] ? PESSOA[eu].nome : '';
   return [
     { aba: 'inicio', titulo: `Oi, ${nome}!`, texto: 'Este é o app de produção do marketing do Grupo Talks. Em 1 minuto você vê onde tocar em cada coisa.' },
-    { aba: 'inicio', alvo: '[data-tour="minhas"]', titulo: 'O que é seu', texto: 'Aqui aparecem as suas entregas e as de outra pessoa que estão esperando um passo seu (“Sua vez”), da mais urgente para a menos urgente.' },
-    { aba: 'inicio', alvo: '[data-tour="minhas"] .card', titulo: 'Toque para abrir', texto: 'Cada entrega tem o passo a passo, o prazo, o link do Drive e a etapa em que está. Toque nela para abrir e marcar o que já fez.' },
+    { aba: 'inicio', alvo: '[data-tour="minhas"]', titulo: 'Seu dia', texto: 'Aqui fica o que você faz hoje, com horário. O resto do mês fica no Backlog, para pegar quando estiver livre.' },
+    { aba: 'inicio', alvo: '[data-tour="minhas"] .card, [data-tour="minhas"] .vazio', titulo: 'Toque para abrir', texto: 'Cada entrega tem o passo a passo, o prazo, o link do Drive e a etapa em que está. Toque nela para abrir e marcar o que já fez.' },
     { aba: 'inicio', alvo: '[data-tour="travando"]', titulo: 'O que está travando', texto: 'Se algo está parado, abra a entrega e toque no motivo em “Algo está travando?”. Aparece aqui para a equipe toda.' },
-    { aba: 'quadro', alvo: '[data-tour="aba-quadro"]', titulo: 'Quadro', texto: 'Mostra todas as entregas do mês, separadas por etapa. O que é seu fica em destaque.' },
-    { aba: 'quadro', alvo: '[data-tour="colunas"]', titulo: 'Uma coluna para cada etapa', texto: 'A fazer → Em produção → Em aprovação → Pronto → Programado (já agendado para sair).' + (TOQUE ? ' Deslize para o lado para ver as outras.' : '') },
-    { aba: 'quadro', alvo: '[data-tour="card-quadro"]', titulo: 'Arraste para mudar a etapa', texto: TOQUE ? 'Segure o card por meio segundo e arraste. Embaixo aparecem as etapas: solte na certa.' : 'Clique, segure e arraste o card até a coluna da etapa certa.' },
+    { aba: 'semana', alvo: '[data-tour="aba-semana"]', titulo: 'Semana', texto: 'O calendário de posts da semana, de segunda a sexta, separado por perfil.' },
+    { aba: 'semana', alvo: '[data-tour="calendario"]', titulo: 'Arraste os posts', texto: (TOQUE ? 'Segure um post e arraste' : 'Arraste um post') + ' para outro dia ou perfil para organizar a semana. A cor mostra a etapa: cinza a fazer, amarelo em produção, lilás em aprovação, verde-água pronto e branco programado.' },
+    { aba: 'quadro', alvo: '[data-tour="aba-quadro"]', titulo: 'Backlog', texto: 'Tudo o que ainda precisa ser feito no mês, separado por etapa. Quando estiver livre, pegue algo daqui.' },
+    { aba: 'quadro', alvo: '[data-tour="card-quadro"]', titulo: 'Arraste para mudar a etapa', texto: 'A fazer → Em produção → Em aprovação → Pronto → Programado. ' + (TOQUE ? 'Segure o card por meio segundo e arraste: embaixo aparecem as etapas.' : 'Clique, segure e arraste o card até a coluna certa.') },
     { aba: 'quadro', alvo: '[data-status-col="pronto"]', titulo: 'Ficou pronto? Link do Drive', texto: 'Quando uma entrega vai para Pronto, o app pede o link do Drive onde está o arquivo. Assim todo mundo encontra.' },
     { aba: 'quadro', alvo: '[data-tour="filtros"]', titulo: 'Perfis e pessoas', texto: 'Vermelho é Emergency Talks, azul é Ped Talks, verde é Intensive Talks e branco é Grupo Talks. Dá para ver só um perfil ou só o que é de uma pessoa.' },
     { aba: 'lancamentos', alvo: '[data-tour="aba-lancamentos"]', titulo: 'Lançamentos', texto: 'O passo a passo completo de cada lançamento, quem faz o quê e quanto falta.' },
-    { aba: 'agenda', alvo: '[data-tour="aba-agenda"]', titulo: 'Agenda', texto: 'Os prazos de cada dia e o que precisa ser programado para sair nas redes.' },
     { aba: 'inicio', alvo: '[data-tour="perfil"]', titulo: 'Seu perfil e ajuda', texto: 'Toque aqui para ver quem faz o quê na equipe, trocar de pessoa ou ver este tutorial de novo. O botão “?” também abre o tutorial.' },
   ];
 }
@@ -1451,6 +1602,7 @@ function acao(nome, el, e) {
     case 'filtro-pessoa': ui.pessoa = v; render(); break;
     case 'coluna': { const col = $(`.coluna[data-status-col="${v}"]`), rol = $('.quadro-rolagem'); if (col && rol) rol.scrollTo({ left: col.offsetLeft - 16, behavior: 'smooth' }); break; }
     case 'passado': ui.passado = !ui.passado; render(); break;
+    case 'semana': ui.semana = v === '0' ? segundaDe(hojeISO()) : somar(ui.semana, Number(v) || 0); render(); break;
     case 'mes': if (v) { ui.mes = v; ui.projeto = null; render(); } break;
     case 'trocar-pessoa': if (folha) esconderFolha(); mostrarIntro('quem'); break;
     case 'escolher-pessoa': {
@@ -1570,7 +1722,7 @@ window.addEventListener('appinstalled', () => {
 
 /* =============================== início =============================== */
 function montarCasca() {
-  const abas = [['inicio', 'Início', 'inicio'], ['quadro', 'Quadro', 'quadro'], ['lancamentos', 'Lançamentos', 'foguete'], ['agenda', 'Agenda', 'agenda']];
+  const abas = [['inicio', 'Hoje', 'inicio'], ['semana', 'Semana', 'agenda'], ['quadro', 'Backlog', 'quadro'], ['lancamentos', 'Lançamentos', 'foguete']];
   const botoes = abas.map(([v, nome, i]) => `<button class="aba-btn" data-acao="aba" data-v="${v}" data-tour="aba-${v}">${ic(i)}<span>${nome}</span></button>`).join('');
   $('#abas-topo').innerHTML = botoes;
   $('#abas-baixo').innerHTML = botoes;

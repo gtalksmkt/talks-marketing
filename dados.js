@@ -97,6 +97,29 @@ window.TM_DADOS = {
     { quem: 'yuri',   faz: ['Define o cronograma', 'Escreve a copy das artes e os roteiros dos vídeos', 'Escreve as legendas (as de conteúdo vêm do professor)', 'Revisa, cuida das páginas e faz todas as artes do Atualiza Talks'] },
   ],
 
+  // expediente de cada um (aparece em "Seu dia")
+  expediente: { thiago: '8h às 17h', manu: '13h às 17h' },
+
+  /* PLANO DO DIA: o que cada um faz hoje e em que horário. O que não está
+     aqui fica no Backlog, para pegar quando estiver livre.
+     item = 'id-do-projeto.chave-da-entrega' · pausa: true = intervalo */
+  planos: {
+    '2026-11-06': {
+      thiago: [
+        { das: '08:00', ate: '11:00', item: 'emergency-thais-nov26.carrossel-06', faz: 'Carrossel da Prof. Thaís que não saiu: fazer e publicar' },
+        { das: '11:00', ate: '12:00', item: 'emergency-thais-nov26.trafego-tema', faz: 'Criativo para tráfego com o tema da Thaís (começar)' },
+        { das: '12:00', ate: '13:00', pausa: true, faz: 'Intervalo' },
+        { das: '13:00', ate: '14:30', item: 'emergency-thais-nov26.trafego-tema', faz: 'Criativo para tráfego: terminar e mandar para o tráfego' },
+        { das: '14:30', ate: '17:00', item: 'tep-lanc-nov26.live-arte', faz: 'Criativo da live das meninas de Ped (18/11, 19h30)' },
+      ],
+      manu: [
+        { das: '13:00', ate: '13:30', item: 'black-talks-nov26.aq-video-0611', faz: 'Programar o vídeo do aquecimento da Black (sai hoje)' },
+        { das: '13:30', ate: '15:15', item: 'atualiza-lanc-nov26.video-trafego', faz: 'Vídeo para tráfego: o que é o Atualiza Talks' },
+        { das: '15:15', ate: '17:00', item: 'black-talks-nov26.bk-video-trafego', faz: 'Vídeo para tráfego: Black Talks' },
+      ],
+    },
+  },
+
   perfis: [
     { id: 'emergency', nome: 'Emergency Talks', curto: 'emergency', cor: '#D31C2B', texto: '#F04452' },
     { id: 'ped',       nome: 'Ped Talks',       curto: 'ped',       cor: '#0074F2', texto: '#5AA6FF' },
@@ -124,64 +147,47 @@ window.TM_DADOS = {
   ],
 
   projetos: [
-    /* =================== BLACK TALKS =================== */
+    /* =================== BLACK TALKS ===================
+       Landing, identidade visual e criativos JÁ PRONTOS (aquecimento e Black).
+       Falta só: legenda (Yuri) e separar/programar cada post (Manu). */
     projeto({
       id: 'black-talks-nov26', mes: '2026-11', perfil: 'grupo', tipo: 'lancamento',
       nome: 'Black Talks', data: '2026-11-23',
-      resumo: 'Aquecimento em 11/11 · Black de 23 a 29/11 com o Atualiza Talks e os cursos online com desconto',
+      resumo: 'Landing, identidade e criativos já prontos: falta só separar e programar cada post · aquecimento 11/11 · Black de 23 a 29/11',
       itens: [
-        // ---- Aquecimento (só no dia 11/11) ----
-        { chave: 'aq-condicoes', fase: 'Aquecimento (11/11)', titulo: 'Definir o que entra no aquecimento de 11/11', resp: 'yuri', formato: 'Planejamento', categoria: 'comercial', prazo: '2026-11-06',
-          passos: ['Confirmar com a diretoria os produtos e os descontos do dia 11/11', 'Passar as condições para o Thiago e a Manu', 'Pedir os links de checkout com desconto ao comercial'] },
-        { chave: 'aq-criativo-0511', fase: 'Aquecimento (11/11)', titulo: 'Criativo do aquecimento (postado em 05/11)', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-05', publicar: '2026-11-05',
+        { chave: 'aq-criativo-0511', fase: 'Aquecimento (11/11)', titulo: 'Criativo do aquecimento (postado em 05/11)', resp: 'manu', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-05', publicar: '2026-11-05',
           inicial: 'programado', descricao: 'Já foi postado em 05/11. Só falta colar o link do Drive.' },
         { chave: 'aq-video-0611', fase: 'Aquecimento (11/11)', titulo: 'Vídeo do aquecimento (sai em 06/11)', resp: 'manu', formato: 'Vídeo', categoria: 'comercial', prazo: '2026-11-05', publicar: '2026-11-06',
           inicial: 'pronto', descricao: 'Já foi gravado e editado. Falta colar o link do Drive e programar.' },
-        { chave: 'aq-carrossel', fase: 'Aquecimento (11/11)', titulo: 'Carrossel: o que vai ter no dia 11/11', resp: 'thiago', formato: 'Carrossel', categoria: 'comercial', prazo: '2026-11-06', publicar: '2026-11-09', depende: ['aq-condicoes'], passos: PASSOS_CARROSSEL },
-        { chave: 'aq-textos', fase: 'Aquecimento (11/11)', titulo: 'Mensagem de WhatsApp do aquecimento', resp: 'yuri', formato: 'Texto', categoria: 'comercial', prazo: '2026-11-09', depende: ['aq-condicoes'],
-          passos: ['Mensagem de WhatsApp para a base'] },
-        { chave: 'aq-trafego', fase: 'Aquecimento (11/11)', titulo: 'Criativos do aquecimento para tráfego', resp: 'thiago', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-09', publicar: '2026-11-10', depende: ['aq-condicoes'], passos: PASSOS_TRAFEGO },
-        { chave: 'aq-amanha', fase: 'Aquecimento (11/11)', titulo: 'Post e stories “é amanhã”', resp: 'thiago', formato: 'Stories', categoria: 'comercial', prazo: '2026-11-09', publicar: '2026-11-10', passos: PASSOS_ESTATICO },
-        { chave: 'aq-hoje', fase: 'Aquecimento (11/11)', titulo: 'Post e stories “é hoje”', resp: 'thiago', formato: 'Stories', categoria: 'comercial', prazo: '2026-11-10', publicar: '2026-11-11', hora: '8h',
-          passos: [COPY, 'Post “é hoje” para o feed', 'Stories para repostar ao longo do dia', REVISAO, 'Exportar e subir no Drive', LEGENDA] },
-        { chave: 'aq-video-hoje', fase: 'Aquecimento (11/11)', titulo: 'Vídeo curto “é hoje”', resp: 'manu', formato: 'Reels', categoria: 'comercial', prazo: '2026-11-10', publicar: '2026-11-11', hora: '12h',
-          descricao: 'Pode reaproveitar trechos do vídeo de 06/11.',
-          passos: ['Separar trechos do vídeo do aquecimento', 'Editar versão de 15 a 30 segundos', REVISAO, 'Exportar 9:16 e subir no Drive', LEGENDA] },
-        { chave: 'aq-encerramento', fase: 'Aquecimento (11/11)', titulo: 'Post de encerramento: “a Black de verdade vem aí”', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-11', publicar: '2026-11-12', passos: PASSOS_ESTATICO },
-
-        // ---- Vem aí (16 a 22/11) ----
-        { chave: 'bk-condicoes', fase: 'Vem aí (16 a 22/11)', titulo: 'Definir a programação e as condições da Black', resp: 'yuri', formato: 'Planejamento', categoria: 'comercial', prazo: '2026-11-11',
-          passos: ['Lista dos cursos online e dos descontos', 'Confirmar o Atualiza Talks por R$ 9,90 no 1º mês a partir de 25/11', 'Links de checkout com desconto (comercial)', 'Passar tudo para a equipe'] },
-        { chave: 'bk-roteiros', fase: 'Vem aí (16 a 22/11)', titulo: 'Roteiros dos vídeos da Black', resp: 'yuri', formato: 'Roteiro', categoria: 'comercial', prazo: '2026-11-12', depende: ['bk-condicoes'],
-          passos: ['Roteiro do vídeo de divulgação', 'Roteiro do vídeo para tráfego', 'Mandar os roteiros para a Manu'] },
-        { chave: 'bk-identidade', fase: 'Vem aí (16 a 22/11)', titulo: 'Identidade visual da Black Talks', resp: 'thiago', formato: 'Arte', categoria: 'comercial', prazo: '2026-11-13',
-          passos: ['Proposta de arte', { t: 'Aprovação do Yuri', r: 'yuri' }, 'Kit: feed, stories e tráfego', 'Subir o kit no Drive'] },
-        { chave: 'bk-vemai-1', fase: 'Vem aí (16 a 22/11)', titulo: 'Estático “vem aí” 1: anúncio da Black Talks', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-13', publicar: '2026-11-16', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
-        { chave: 'bk-video', fase: 'Vem aí (16 a 22/11)', titulo: 'Vídeo de divulgação da Black Talks', resp: 'manu', formato: 'Vídeo', categoria: 'comercial', prazo: '2026-11-17', publicar: '2026-11-20', depende: ['bk-roteiros'], passos: PASSOS_VIDEO },
-        // contagem regressiva (feed e stories, na identidade da Black)
-        { chave: 'bk-contagem-5', fase: 'Vem aí (16 a 22/11)', titulo: 'Contagem regressiva da Black: “faltam 5 dias”', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-16', publicar: '2026-11-18', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
-        { chave: 'bk-vemai-2', fase: 'Vem aí (16 a 22/11)', titulo: 'Estático “vem aí” 2: programação especial', resp: 'thiago', formato: 'Carrossel', categoria: 'comercial', prazo: '2026-11-17', publicar: '2026-11-19', depende: ['bk-identidade', 'bk-condicoes'],
-          passos: [{ t: 'Copy da arte: lançamentos e condições especiais', r: 'yuri' }, 'Diagramar', REVISAO, 'Exportar e subir no Drive', LEGENDA] },
-        { chave: 'bk-contagem-3', fase: 'Vem aí (16 a 22/11)', titulo: 'Contagem regressiva da Black: “faltam 3 dias”', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-18', publicar: '2026-11-20', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
-        { chave: 'bk-vemai-3', fase: 'Vem aí (16 a 22/11)', titulo: 'Contagem regressiva da Black: “faltam 2 dias, começa segunda!”', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-19', publicar: '2026-11-21', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
-        { chave: 'bk-contagem-1', fase: 'Vem aí (16 a 22/11)', titulo: 'Contagem regressiva da Black: “é amanhã!”', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-20', publicar: '2026-11-22', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
-        { chave: 'bk-textos', fase: 'Vem aí (16 a 22/11)', titulo: 'Textos da Black: WhatsApp e e-mail', resp: 'yuri', formato: 'Texto', categoria: 'comercial', prazo: '2026-11-19', depende: ['bk-condicoes'], passos: PASSOS_TEXTOS },
-
-        // ---- Black (23 a 29/11) ----
-        { chave: 'bk-comecou', fase: 'Black (23 a 29/11)', titulo: 'Contagem regressiva da Black: “começou!”', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-20', publicar: '2026-11-23', hora: '8h', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
-        { chave: 'bk-cursos', fase: 'Black (23 a 29/11)', titulo: 'Estáticos dos cursos online com desconto', resp: 'thiago', formato: 'Carrossel', categoria: 'comercial', prazo: '2026-11-20', publicar: '2026-11-23', depende: ['bk-identidade', 'bk-condicoes'],
-          descricao: 'Uma arte por curso online e um carrossel com todos. Postar nos perfis do Grupo Talks, Emergency, Ped e Intensive.',
-          passos: [COPY, 'Uma arte por curso', 'Carrossel com todos os cursos', REVISAO, 'Exportar e subir no Drive', LEGENDA] },
-        { chave: 'bk-trafego', fase: 'Black (23 a 29/11)', titulo: 'Criativos da Black para tráfego', resp: 'thiago', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-20', publicar: '2026-11-23', depende: ['bk-identidade'], passos: PASSOS_TRAFEGO },
-        { chave: 'bk-video-trafego', fase: 'Black (23 a 29/11)', titulo: 'Vídeo da Black para tráfego', resp: 'manu', formato: 'Vídeo', categoria: 'trafego', prazo: '2026-11-20', publicar: '2026-11-23', depende: ['bk-roteiros'], passos: PASSOS_VIDEO_TRAFEGO },
-        { chave: 'bk-stories', fase: 'Black (23 a 29/11)', titulo: 'Stories de todos os dias da Black (23 a 29/11)', resp: 'thiago', formato: 'Stories', categoria: 'comercial', prazo: '2026-11-20', publicar: '2026-11-23', depende: ['bk-identidade'],
-          descricao: 'Sequência de stories com o link do checkout. A Manu programa de 23 a 29/11.',
-          passos: [{ t: 'Copy dos stories', r: 'yuri' }, 'Criar a sequência de stories', REVISAO, 'Exportar e subir no Drive'] },
-        { chave: 'bk-atualiza-990', fase: 'Black (23 a 29/11)', titulo: 'Estáticos do Atualiza Talks por R$ 9,90 no 1º mês', resp: 'yuri', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-23', publicar: '2026-11-25', depende: ['bk-identidade'], passos: PASSOS_ATUALIZA },
-        { chave: 'bk-blackfriday', fase: 'Black (23 a 29/11)', titulo: 'Post e stories “Black Friday é hoje”', resp: 'thiago', formato: 'Stories', categoria: 'comercial', prazo: '2026-11-25', publicar: '2026-11-27', hora: '8h', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
-        { chave: 'bk-ultimos', fase: 'Black (23 a 29/11)', titulo: 'Contagem regressiva da Black: “últimos 2 dias”', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-26', publicar: '2026-11-28', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
-        { chave: 'bk-ultimo-dia', fase: 'Black (23 a 29/11)', titulo: 'Post e stories “último dia da Black”', resp: 'thiago', formato: 'Stories', categoria: 'comercial', prazo: '2026-11-26', publicar: '2026-11-29', hora: '8h', depende: ['bk-identidade'], passos: PASSOS_ESTATICO },
-      ],
+      ].concat([
+        // posts com criativo pronto: [chave, fase, título, formato, dia de publicar, hora]
+        ['aq-post-11', 'Aquecimento (11/11)', 'Post do aquecimento: o que vai ter no dia 11/11', 'Carrossel', '2026-11-09'],
+        ['aq-amanha', 'Aquecimento (11/11)', 'Post e stories “é amanhã”', 'Stories', '2026-11-10'],
+        ['aq-hoje', 'Aquecimento (11/11)', 'Post e stories “é hoje”', 'Stories', '2026-11-11', '8h'],
+        ['aq-encerramento', 'Aquecimento (11/11)', 'Post de encerramento: “a Black de verdade vem aí”', 'Criativo', '2026-11-12'],
+        ['bk-vemai-1', 'Vem aí (16 a 22/11)', '“Vem aí”: anúncio da Black Talks', 'Criativo', '2026-11-16'],
+        ['bk-contagem-5', 'Vem aí (16 a 22/11)', 'Contagem regressiva: “faltam 5 dias”', 'Criativo', '2026-11-18'],
+        ['bk-vemai-2', 'Vem aí (16 a 22/11)', '“Vem aí”: programação especial', 'Carrossel', '2026-11-19'],
+        ['bk-contagem-3', 'Vem aí (16 a 22/11)', 'Contagem regressiva: “faltam 3 dias”', 'Criativo', '2026-11-20'],
+        ['bk-contagem-2', 'Vem aí (16 a 22/11)', 'Contagem regressiva: “faltam 2 dias, começa segunda!”', 'Criativo', '2026-11-21'],
+        ['bk-contagem-1', 'Vem aí (16 a 22/11)', 'Contagem regressiva: “é amanhã!”', 'Criativo', '2026-11-22'],
+        ['bk-comecou', 'Black (23 a 29/11)', 'Contagem regressiva: “começou!”', 'Criativo', '2026-11-23', '8h'],
+        ['bk-cursos', 'Black (23 a 29/11)', 'Cursos online com desconto', 'Carrossel', '2026-11-23'],
+        ['bk-stories', 'Black (23 a 29/11)', 'Stories de todos os dias da Black (23 a 29/11)', 'Stories', '2026-11-23'],
+        ['bk-atualiza-990', 'Black (23 a 29/11)', 'Atualiza Talks por R$ 9,90 no 1º mês', 'Criativo', '2026-11-25'],
+        ['bk-blackfriday', 'Black (23 a 29/11)', 'Post e stories “Black Friday é hoje”', 'Stories', '2026-11-27', '8h'],
+        ['bk-ultimos', 'Black (23 a 29/11)', 'Contagem regressiva: “últimos 2 dias”', 'Criativo', '2026-11-28'],
+        ['bk-ultimo-dia', 'Black (23 a 29/11)', 'Post e stories “último dia da Black”', 'Stories', '2026-11-29', '8h'],
+      ].map(([chave, fase, titulo, formato, publicar, hora]) => ({
+        chave, fase, titulo, resp: 'manu', formato, categoria: 'comercial', prazo: diasUteisAntes(publicar, 1), publicar, hora,
+        inicial: 'pronto', descricao: 'Criativo já pronto no Drive: separar o certo e programar.', passos: [LEGENDA],
+      }))).concat([
+        { chave: 'bk-trafego', fase: 'Tráfego', titulo: 'Criativos do aquecimento e da Black para tráfego (prontos)', resp: 'thiago', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-09',
+          inicial: 'pronto', descricao: 'Já prontos no Drive.', passos: [TRAFEGO_ENVIAR] },
+        { chave: 'bk-video-trafego', fase: 'Tráfego', titulo: 'Vídeo para tráfego: Black Talks', resp: 'manu', formato: 'Vídeo', categoria: 'trafego', prazo: '2026-11-06',
+          descricao: 'Vai rodar no tráfego. Usar a identidade e os criativos da Black que já estão prontos.',
+          passos: [{ t: 'Tópicos do vídeo: o que é a Black Talks e as condições', r: 'yuri' }, 'Separar as artes e os vídeos da Black que já temos', 'Editar com legenda na tela', REVISAO, 'Exportar 9:16, 4:5 e 1:1', TRAFEGO_ENVIAR] },
+      ]),
     }),
 
     /* =================== PREPARATÓRIO TEP (Ped) =================== */
@@ -201,7 +207,7 @@ window.TM_DADOS = {
         { chave: 'live-roteiros', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Live confirmada: tema e roteiros dos vídeos de divulgação', resp: 'yuri', formato: 'Roteiro', categoria: 'comercial', prazo: '2026-11-10',
           inicial: { status: 'producao', passos: [0] }, descricao: 'A Rebecca e a Natália confirmaram: quarta, 18/11, às 19h30.',
           passos: ['Live confirmada com a Rebecca e a Natália (18/11, 19h30)', 'Combinar o tema e o roteiro da live com as duas', 'Roteiros dos 2 vídeos de divulgação da live', 'Mandar os roteiros para a Manu pedir os vídeos às duas'] },
-        { chave: 'live-arte', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Criativo de divulgação da live (feed e stories)', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-11', publicar: '2026-11-12',
+        { chave: 'live-arte', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Criativo de divulgação da live (feed e stories)', resp: 'thiago', formato: 'Criativo', categoria: 'comercial', prazo: '2026-11-06', publicar: '2026-11-12',
           descricao: 'Data, horário (19h30), fotos da Rebecca e da Natália e o tema da live.',
           passos: [{ t: 'Copy da arte: tema e título da live', r: 'yuri' }, 'Criar a arte (feed e stories)', REVISAO, 'Exportar e subir no Drive', LEGENDA] },
         { chave: 'live-trafego', fase: 'Live de lançamento (18/11, 19h30)', titulo: 'Criativo da live para tráfego', resp: 'thiago', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-12', publicar: '2026-11-13', depende: ['live-arte'],
@@ -257,7 +263,9 @@ window.TM_DADOS = {
           descricao: 'Postar no Emergency e no Grupo Talks.', passos: PASSOS_ATUALIZA },
         { chave: 'video', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Vídeo de divulgação do Atualiza Talks', resp: 'manu', formato: 'Vídeo', categoria: 'comercial', prazo: '2026-11-20', publicar: '2026-11-25', depende: ['roteiros'],
           descricao: 'Vai na landing page e nos perfis do Emergency e do Grupo Talks.', passos: PASSOS_VIDEO },
-        { chave: 'video-trafego', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Vídeo do Atualiza Talks para tráfego', resp: 'manu', formato: 'Vídeo', categoria: 'trafego', prazo: '2026-11-23', publicar: '2026-11-25', depende: ['roteiros'], passos: PASSOS_VIDEO_TRAFEGO },
+        { chave: 'video-trafego', fase: 'Pré-lançamento', titulo: 'Vídeo para tráfego: o que é o Atualiza Talks', resp: 'manu', formato: 'Vídeo', categoria: 'trafego', prazo: '2026-11-06',
+          descricao: 'Ainda não temos um vídeo explicando o Atualiza Talks. Vai rodar no tráfego.',
+          passos: [{ t: 'Tópicos do vídeo: o que é o Atualiza Talks e para quem é', r: 'yuri' }, 'Separar imagens e vídeos que já temos', 'Editar com legenda na tela', REVISAO, 'Exportar 9:16, 4:5 e 1:1', TRAFEGO_ENVIAR] },
         { chave: 'estaticos', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Estáticos de lançamento (Emergency e Grupo Talks)', resp: 'yuri', formato: 'Carrossel', categoria: 'comercial', prazo: '2026-11-23', publicar: '2026-11-25',
           passos: ['Copy dos cards', 'Diagramar o carrossel', 'Exportar e subir no Drive', 'Legenda'] },
         { chave: 'trafego', fase: 'Lançamento (25/11, CBMEDE)', titulo: 'Criativos do Atualiza Talks para tráfego', resp: 'yuri', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-23', publicar: '2026-11-25',
@@ -312,10 +320,16 @@ window.TM_DADOS = {
       id: 'emergency-thais-nov26', mes: '2026-11', perfil: 'emergency',
       nome: 'Carrosséis da Prof. Thaís · 2 por semana',
       resumo: 'Conteúdo fixo do Emergency: terça e quinta (dia sugerido, ajuste se precisar). A legenda vem da professora.',
-      itens: ['2026-11-10', '2026-11-12', '2026-11-17', '2026-11-19', '2026-11-24', '2026-11-26'].map(d => ({
+      itens: [
+        { chave: 'carrossel-06', fase: 'Conteúdo fixo', titulo: 'Carrossel da Prof. Thaís · 06/11 (o que não saiu nesta semana)', resp: 'thiago', formato: 'Carrossel', categoria: 'conteudo',
+          prazo: '2026-11-06', publicar: '2026-11-06', hora: '11h', passos: passosConteudo('da Prof. Thaís') },
+        { chave: 'trafego-tema', fase: 'Conteúdo fixo', titulo: 'Criativo para tráfego com o tema do carrossel da Prof. Thaís', resp: 'thiago', formato: 'Criativo', categoria: 'trafego', prazo: '2026-11-06',
+          descricao: 'Estamos sem post para o tráfego: usar o tema do carrossel da Thaís de hoje.',
+          passos: [COPY, 'Criar a arte com o tema do carrossel', REVISAO, 'Subir no Drive', TRAFEGO_ENVIAR] },
+      ].concat(['2026-11-10', '2026-11-12', '2026-11-17', '2026-11-19', '2026-11-24', '2026-11-26'].map(d => ({
         chave: 'carrossel-' + d.slice(8), fase: 'Conteúdo fixo', titulo: 'Carrossel da Prof. Thaís · ' + dm(d), resp: 'thiago', formato: 'Carrossel', categoria: 'conteudo',
         prazo: diasUteisAntes(d, 1), publicar: d, passos: passosConteudo('da Prof. Thaís'),
-      })),
+      }))),
     }),
     projeto({
       id: 'intensive-cont-nov26', mes: '2026-11', perfil: 'intensive',

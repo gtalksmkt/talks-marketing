@@ -20,11 +20,11 @@ No app, cada arte do Thiago segue: copy (Yuri) → arte (Thiago) → revisão (Y
 
 1. Abre o app e escolhe quem é. O app destaca o que é dessa pessoa ("Você") e o que está esperando um passo dela ("Sua vez").
 2. Um tutorial mostra onde tocar em cada coisa (dá para rever no botão **?**).
-3. Cada entrega tem prazo para ficar **pronta** (para dar tempo de agendar) e o dia de **publicar**. O card mostra o próximo passo e de quem ele é.
-4. No **Quadro**, arrasta cada entrega para a etapa certa: A fazer, Em produção, Em aprovação, Pronto, Programado.
-5. Ao colocar em **Pronto**, o app pede o **link do Drive** do arquivo final.
-6. Se algo estiver parado, abre a entrega e marca **Travado**, com o motivo. Aparece para todo mundo na tela de início.
-7. A **Agenda** mostra, dia a dia, o que precisa ficar pronto e o que precisa sair (com "Falta programar" quando já está pronto mas não foi agendado).
+3. **Hoje**: o plano do dia de cada um, com horário (vem de `planos` no `dados.js`), o que a equipe precisa de você hoje e o dia dos outros.
+4. **Semana**: calendário de posts de segunda a sexta (e fim de semana), uma linha por perfil. Arrasta o post para outro dia ou perfil; a cor mostra a etapa. Arrastar para "Posts sem dia" tira do calendário.
+5. **Backlog**: tudo o que ainda precisa ser feito no mês, por etapa (A fazer, Em produção, Em aprovação, Pronto, Programado). Quando alguém fica livre, pega algo daqui.
+6. Ao colocar em **Pronto**, o app pede o **link do Drive** do arquivo final. Se algo estiver parado, abre a entrega e marca **Travado**, com o motivo.
+7. Cada entrega tem prazo para ficar **pronta** e o dia de **publicar**. O card mostra o próximo passo e de quem ele é. "Prazos em lista" (dentro da Semana) mostra os prazos dia a dia.
 
 ## Arquivos
 
@@ -41,6 +41,7 @@ No app, cada arte do Thiago segue: copy (Yuri) → arte (Thiago) → revisão (Y
 
 ## Planejamento do mês (`dados.js`)
 
+- `planos`: o plano do dia, por data e por pessoa: `{ das: '08:00', ate: '11:00', item: 'projeto.chave', faz: 'o que fazer' }` (`pausa: true` para intervalo). O que não está no plano fica no Backlog. `expediente` guarda o horário de cada um.
 - `marcos`: a linha do tempo que aparece no topo (data, `ate` opcional, `hora` opcional, título, perfil).
 - `projetos`: cada lançamento ou frente de conteúdo, com `projeto({ id, mes, perfil, tipo, nome, data, resumo, itens })`.
 - Cada entrega: `chave`, `titulo`, `resp`, `formato`, `categoria` (`conteudo` | `comercial` | `trafego`), `prazo` (pronto até), `publicar` e `hora` (opcionais), `depende` (chaves que precisam ficar prontas antes), `passos` (um passo de outra pessoa: `{ t: 'Revisão do Yuri', r: 'yuri' }`) e `inicial` (etapa de partida, por exemplo `'pronto'` ou `{ status: 'producao', travado: true, motivo: '...' }`).
@@ -52,7 +53,9 @@ No app, cada arte do Thiago segue: copy (Yuri) → arte (Thiago) → revisão (Y
 
 **Desligado por enquanto** (`quemAdiciona: []` no `dados.js`). Para ligar, coloque `quemAdiciona: ['yuri']`: quem estiver na lista vê o botão **Nova entrega** no Quadro e na página de cada lançamento. A entrega nova fica guardada na planilha e aparece para toda a equipe; dá para apagar abrindo a entrega.
 
-Isso precisa do código da planilha na **versão 2** (`apps-script/Codigo.gs`). Para atualizar (mesmo link, não muda nada no app):
+## Atualizar o código da planilha
+
+O calendário da Semana (arrastar e salvar dia e perfil) precisa do código da planilha na **versão 3** (`apps-script/Codigo.gs`); as entregas novas, da versão 2 ou maior. Enquanto a planilha estiver numa versão antiga, o app avisa e só mostra. Para atualizar (mesmo link, não muda nada no app):
 
 1. Na planilha: **Extensões > Apps Script**.
 2. Apague o código que está lá, cole o novo e salve (Ctrl+S).
